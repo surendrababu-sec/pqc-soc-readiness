@@ -1,8 +1,8 @@
-# PQC SOC Readiness — Post-Quantum Cryptography Research
+# PQC SOC Readiness - Post-Quantum Cryptography Research
 
 ## What is this project?
 A research and development project exploring post-quantum 
-cryptography threats from a SOC analyst perspective — 
+cryptography threats from a SOC analyst perspective - 
 specifically the "Harvest Now, Decrypt Later" threat model 
 and its implications for financial services organisations.
 
@@ -16,7 +16,7 @@ It's the end of the grace period.
 - A practical SOC-focused threat model
 
 ## Project Status
-🔬 Currently in Phase 1 — Research & Foundation (Week 1 of 10)
+Currently in Phase 1 - Research & Foundation (Week 1 of 10)
 
 ## Research Notes
 Weekly learning documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
