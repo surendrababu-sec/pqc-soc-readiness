@@ -82,7 +82,7 @@ Practical quantum readiness roadmap:
 
 ---
 Q-Day isn't the beginning of the threat. 
-It's the end of the grace period.*
+It's the end of the grace period.
 
 ---
 
