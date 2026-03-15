@@ -81,8 +81,8 @@ Practical quantum readiness roadmap:
    posture is your risk too
 
 ---
-Q-Day isn't the beginning of the threat. 
-It's the end of the grace period.
+*Q-Day isn't the beginning of the threat. 
+It's the end of the grace period.*
 
 ---
 
