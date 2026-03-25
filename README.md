@@ -29,7 +29,7 @@ It's the end of the grace period.
 - Cryptographic vulnerability assessment in financial services
 
 ## Project Status
-🔬 Currently in Phase 1 - Research & Foundation (Week 2 of 10)
+Currently in Phase 1 - Research & Foundation (Week 2 of 10)
 
 ## Research Notes
 Weekly learning documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
