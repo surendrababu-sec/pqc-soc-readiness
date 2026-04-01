@@ -38,7 +38,7 @@ $$9 + 15 \equiv 7 \pmod{17}, \qquad 9 - 15 \equiv 11 \pmod{17}, \qquad 9 \times 
 
 Kyber operates in the **polynomial ring**:
 
-$$R_q = \mathbb{Z}_q[x] \;/\; (x^n + 1)$$
+$$R_q = \mathbb{Z}_q[x] / (x^n + 1)$$
 
 where $q$ is the prime modulus and $n$ is a positive integer. This ring consists of all polynomials with integer coefficients in $\mathbb{Z}_q$, of degree at most $n-1$. When polynomials are multiplied, the result is reduced modulo $(x^n + 1)$, keeping the degree bounded.
 
