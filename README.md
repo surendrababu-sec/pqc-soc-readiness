@@ -1,40 +1,46 @@
 # PQC SOC Readiness - Post-Quantum Cryptography Research
 
 ## What is this?
-An independent research paper and proof-of-concept tool 
-exploring post-quantum cryptography threats from a SOC 
-analyst perspective - specifically the "Harvest Now, 
-Decrypt Later" threat model and its implications for 
-financial services organisations.
+An independent research paper and open-source tool exploring 
+post-quantum cryptography threats from a security operations 
+perspective - specifically the "Harvest Now, Decrypt Later" 
+threat model and its implications for enterprise and critical 
+infrastructure organisations.
 
 ## Research Title
-"Post-Quantum Cryptography Readiness in Financial Services: 
-A SOC Analyst Perspective on the Harvest Now, Decrypt Later 
+"Post-Quantum Cryptography Readiness in Security Operations: 
+Detecting and Responding to the Harvest Now, Decrypt Later 
 Threat"
 
 ## Why does this matter?
-Q-Day isn't the beginning of the threat. 
+Q-Day isn't the beginning of the threat.  
 It's the end of the grace period.
 
 ## What am I producing?
-- A research paper (target publication: arXiv.org)
-- A proof-of-concept cryptographic vulnerability 
-  scanner (Python) supporting the paper's findings
-- A practical SOC-focused PQC threat model
+- A research paper (target publication: arXiv.org cs.CR)
+- An open-source cryptographic vulnerability scanner (Python)
+- A practical SOC-focused PQC threat model mapped to 
+  NIST PQC standards
 
 ## Research Focus
-- Post-Quantum Cryptography (CRYSTALS-Kyber, CRYSTALS-Dilithium)
+- Post-Quantum Cryptography (CRYSTALS-Kyber, CRYSTALS-Dilithium, 
+  SPHINCS+)
 - Harvest Now, Decrypt Later (HNDL) threat model
 - NIST PQC Standards (FIPS 203, 204, 205)
-- Cryptographic vulnerability assessment in financial services
+- Cryptographic vulnerability detection in operational 
+  security environments
+- PQC deployment challenges in resource-constrained and 
+  networked systems
 
 ## Project Status
-Currently in Phase 1 - Research & Foundation (Week 2 of 10)
+Currently in Phase 1 - Research & Foundation (Month 2 of 10)
 
 ## Research Notes
-Weekly learning documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
+Monthly research documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
 
 ## Author
-Surendra Babu | MSc Information Security & Digital Forensics  
-Focused on defensive security, SOC operations, and emerging 
-cryptographic threats.
+Surendra Babu | MSc Information Security & Digital Forensics 
+(Distinction), University of East London  
+PhD research supervised by Dr. Elias Eze, UEL  
+Focused on defensive security, SOC operations, and 
+post-quantum cryptographic threats
