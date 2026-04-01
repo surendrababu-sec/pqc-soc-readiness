@@ -246,11 +246,11 @@ For comparison, TLS 1.3 with X25519 uses 32-byte public keys. The larger Kyber k
 
 Understanding Kyber's internals at this depth is directly relevant to the PQC-SOC Readiness Scanner in two ways:
 
-**Detection side:** The scanner identifies systems still using RSA and ECC. Knowing the exact Kyber parameters and key sizes allows it to generate accurate migration recommendations — not generic advice, but specific guidance: migrate to ML-KEM-768, expect public keys of 1,184 bytes and ciphertexts of 1,088 bytes.
+**Detection side:** The scanner identifies systems still using RSA and ECC. Knowing the exact Kyber parameters and key sizes allows it to generate accurate migration recommendations - not generic advice, but specific guidance: migrate to ML-KEM-768, expect public keys of 1,184 bytes and ciphertexts of 1,088 bytes.
 
-**Infrastructure side:** The size and computational overhead differences between classical and post-quantum schemes have direct implications for network infrastructure — TLS handshake sizes, certificate chain lengths, and processing overhead on constrained devices. This is precisely the problem Surrey's channel-aware PQC project addresses for 6G wireless networks: how to deploy these larger, more compute-intensive schemes where every byte and every millisecond matters.
+**Infrastructure side:** The size and computational overhead differences between classical and post-quantum schemes have direct implications for network infrastructure - TLS handshake sizes, certificate chain lengths, and processing overhead on constrained devices. This is precisely the problem Surrey's channel-aware PQC project addresses for 6G wireless networks: how to deploy these larger, more compute-intensive schemes where every byte and every millisecond matters.
 
-Month 3 will cover CRYSTALS-Dilithium (ML-DSA, FIPS 204) — the post-quantum digital signature scheme.
+Month 3 will cover CRYSTALS-Dilithium (ML-DSA, FIPS 204) - the post-quantum digital signature scheme.
 
 ---
 
