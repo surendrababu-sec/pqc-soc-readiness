@@ -2,7 +2,7 @@
 
 ---
 
-## Week 1 - Post-Quantum Cryptography & The Harvest Now, Decrypt Later Threat
+## Month 1 - Post-Quantum Cryptography & The Harvest Now, Decrypt Later Threat
 
 ### 1. The Foundation We're All Trusting Right Now
 Today's digital communication relies heavily on RSA - an asymmetric 
@@ -18,7 +18,7 @@ superposition to exist as 0 and 1 simultaneously. This allows quantum
 computers to explore vast solution spaces in parallel, solving certain 
 mathematical problems exponentially faster than anything we have today.
 
-### 3. The Threat Nobody is Talking About Loudly Enough
+### 3. The threat most organisations aren't acting on fast enough
 Using Shor's Algorithm (or emerging approaches like adiabatic quantum 
 computation), a sufficiently powerful quantum computer could break RSA 
 encryption in hours. What takes classical computers millions of years 
