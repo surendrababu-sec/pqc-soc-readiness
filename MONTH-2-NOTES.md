@@ -4,7 +4,7 @@
 
 ## Overview
 
-Month 1 established *why* post-quantum cryptography matters — the harvest-now-decrypt-later threat model, the vulnerability of RSA and ECC to Shor's algorithm, and the NIST standardisation response. Month 2 goes deeper into *how* the solution actually works.
+Month 1 established *why* post-quantum cryptography matters - the harvest-now-decrypt-later threat model, the vulnerability of RSA and ECC to Shor's algorithm, and the NIST standardisation response. Month 2 goes deeper into *how* the solution actually works.
 
 This month's focus is CRYSTALS-Kyber, standardised by NIST as FIPS 203 under the name ML-KEM (Module-Lattice-based Key Encapsulation Mechanism). Understanding Kyber properly requires working through the mathematical structures that make it both functional and secure — the algebra, the hardness assumptions, the encryption scheme, and the engineering optimisations that make it deployable at scale.
 
@@ -14,9 +14,9 @@ The source material for this month is the lecture series by Professor Alfred Men
 
 ## 1. Why a New Cryptographic Structure?
 
-RSA and ECC derive their security from number-theoretic problems — integer factorisation and the elliptic curve discrete logarithm problem respectively. Both are efficiently solvable by Shor's algorithm on a sufficiently powerful quantum computer.
+RSA and ECC derive their security from number-theoretic problems - integer factorisation and the elliptic curve discrete logarithm problem respectively. Both are efficiently solvable by Shor's algorithm on a sufficiently powerful quantum computer.
 
-Post-quantum cryptography needs to be built on a different class of mathematical problem — one that remains hard even for quantum computers. Kyber is built on **lattice problems**, specifically variants of the **Learning With Errors (LWE)** problem. These problems have been studied extensively since the early 2000s and no known quantum algorithm provides a significant advantage in solving them.
+Post-quantum cryptography needs to be built on a different class of mathematical problem - one that remains hard even for quantum computers. Kyber is built on **lattice problems**, specifically variants of the **Learning With Errors (LWE)** problem. These problems have been studied extensively since the early 2000s and no known quantum algorithm provides a significant advantage in solving them.
 
 ---
 
@@ -24,9 +24,9 @@ Post-quantum cryptography needs to be built on a different class of mathematical
 
 ### 2.1 Modular Arithmetic
 
-The foundation of Kyber's arithmetic is modular integer arithmetic over $\mathbb{Z}_q$ — the set of integers $\{0, 1, 2, \ldots, q-1\}$ where $q$ is a prime modulus. All addition, subtraction and multiplication operations are performed modulo $q$.
+The foundation of Kyber's arithmetic is modular integer arithmetic over $\mathbb{Z}_q$ - the set of integers $\{0, 1, 2, \ldots, q-1\}$ where $q$ is a prime modulus. All addition, subtraction and multiplication operations are performed modulo $q$.
 
-An important concept is **symmetric mod**: rather than representing integers in the range $[0, q-1]$, we centre them around zero, giving the range $[-(q-1)/2,\; (q-1)/2]$. This symmetric representation is crucial for measuring the *size* of elements — a concept that underpins the security of lattice-based schemes.
+An important concept is **symmetric mod**: rather than representing integers in the range $[0, q-1]$, we centre them around zero, giving the range $[-(q-1)/2,\; (q-1)/2]$. This symmetric representation is crucial for measuring the *size* of elements - a concept that underpins the security of lattice-based schemes.
 
 For ML-KEM-768, **$q = 3329$**.
 
@@ -42,7 +42,7 @@ $$R_q = \mathbb{Z}_q[x] \;/\; (x^n + 1)$$
 
 where $q$ is the prime modulus and $n$ is a positive integer. This ring consists of all polynomials with integer coefficients in $\mathbb{Z}_q$, of degree at most $n-1$. When polynomials are multiplied, the result is reduced modulo $(x^n + 1)$, keeping the degree bounded.
 
-**Why this ring?** The reduction polynomial $x^n + 1$ is irreducible over $\mathbb{Z}_q$ when $n$ is a power of 2. This enables the **Number-Theoretic Transform (NTT)** for fast polynomial multiplication — critical for practical performance.
+**Why this ring?** The reduction polynomial $x^n + 1$ is irreducible over $\mathbb{Z}_q$ when $n$ is a power of 2. This enables the **Number-Theoretic Transform (NTT)** for fast polynomial multiplication - critical for practical performance.
 
 For ML-KEM-768, **$n = 256$**, giving polynomials of degree at most 255 with coefficients in $\mathbb{Z}_{3329}$.
 
@@ -51,7 +51,7 @@ A polynomial can be represented equivalently as a vector of $n$ coefficients:
 $$f(x) = f_0 + f_1 x + f_2 x^2 + \cdots + f_{n-1} x^{n-1} \;\longleftrightarrow\; (f_0,\; f_1,\; \ldots,\; f_{n-1})$$
 
 **To multiply two polynomials** $f(x), g(x) \in R_q$:
-1. Compute $h(x) = f(x) \times g(x)$ in $\mathbb{Z}_q[x]$ — degree at most $2n-2$
+1. Compute $h(x) = f(x) \times g(x)$ in $\mathbb{Z}_q[x]$ - degree at most $2n-2$
 2. Reduce $h(x)$ modulo $x^n + 1$ to get a remainder polynomial of degree at most $n-1$
 3. The result $f(x) \times g(x) = \delta(x)$ in $R_q$, and the size of $R_q$ is $q^n$
 
@@ -68,7 +68,7 @@ Operations on module elements:
 - Multiplication (inner product) of two vectors in $R_q^k$ produces a polynomial in $R_q$
 - All vectors in $R_q^k$ are written as column vectors
 
-### 2.4 Size of Polynomials — The Infinity Norm
+### 2.4 Size of Polynomials - The Infinity Norm
 
 A core concept in lattice cryptography is the *size* of a polynomial. Kyber uses the **infinity norm** $\|\cdot\|_\infty$:
 
@@ -80,7 +80,7 @@ A polynomial is called **"small"** if $\|f\|_\infty$ is small relative to $q/2$.
 
 $$S_\eta = \{ f \in R_q \mid \|f\|_\infty \leq \eta \}$$
 
-This distinction between large and small polynomials is the foundation of the security argument — error terms are small, but public parameters are large and computationally indistinguishable from random.
+This distinction between large and small polynomials is the foundation of the security argument - error terms are small, but public parameters are large and computationally indistinguishable from random.
 
 ---
 
@@ -98,7 +98,7 @@ where $\mathbf{s} \in S_{\eta_1}^l$ (small secret) and $\mathbf{e} \in S_{\eta_2
 
 **Required:** Find $\mathbf{s}$
 
-If $\mathbf{e} = 0$, then $\mathbf{t} = \mathbf{A} \cdot \mathbf{s}$ is a standard linear system solvable by conventional algebra. The addition of the small error term $\mathbf{e}$ makes the problem computationally hard — this is the core "Learning With Errors" intuition.
+If $\mathbf{e} = 0$, then $\mathbf{t} = \mathbf{A} \cdot \mathbf{s}$ is a standard linear system solvable by conventional algebra. The addition of the small error term $\mathbf{e}$ makes the problem computationally hard - this is the core "Learning With Errors" intuition.
 
 ### 3.2 Decisional MLWE (D-MLWE)
 
@@ -150,9 +150,9 @@ $$\mathbf{t} = \mathbf{A} \cdot \mathbf{s} + \mathbf{e}$$
 4. **Public (encryption) key:** $(\rho, \mathbf{t})$ — $\rho$ replaces the full matrix $\mathbf{A}$ since anyone knowing $\rho$ can regenerate $\mathbf{A}$ via SHAKE-128
 5. **Private (decryption) key:** $\mathbf{s}$
 
-Computing $\mathbf{s}$ from $(\mathbf{A}, \mathbf{t})$ is an instance of MLWE — computationally infeasible by assumption.
+Computing $\mathbf{s}$ from $(\mathbf{A}, \mathbf{t})$ is an instance of MLWE - computationally infeasible by assumption.
 
-**Key sizes:** ML-KEM-768 public key = **1,184 bytes** vs ECC (P-384) = 48 bytes vs RSA (3072-bit) = 304 bytes. The larger Kyber key is the direct cost of quantum resistance.
+**Key sizes:** ML-KEM-768 public key = **1,184 bytes** vs ECC (P-384) = 48 bytes vs RSA (3072-bit) = 384 bytes. The larger Kyber key is the direct cost of quantum resistance.
 
 ### 4.4 Encryption
 
@@ -180,9 +180,9 @@ $$\mathbf{m} = \text{Round}_q\!\left(v' - \mathbf{s}^T \cdot \mathbf{u}'\right)$
 
 **Why this works:** The quantity $v' - \mathbf{s}^T \cdot \mathbf{u}'$ reduces algebraically to approximately $\lceil q/2 \rceil \cdot \mathbf{m}$ plus a small error polynomial $E(x) = e^T r + e_2 - s^T e_1$. As long as $\|E\|_\infty < q/4$, the rounding function correctly recovers $\mathbf{m}$.
 
-### 4.6 Decryption Failure — Negligible but Non-Zero
+### 4.6 Decryption Failure - Negligible but Non-Zero
 
-For ML-KEM-768, $|E_i|$ can theoretically exceed $q/4$, meaning decryption is not guaranteed with probability 1. However, this failure probability is less than $2^{-164}$ — negligible in practice. The Kyber parameters were carefully chosen to minimise this without compromising security.
+For ML-KEM-768, $|E_i|$ can theoretically exceed $q/4$, meaning decryption is not guaranteed with probability 1. However, this failure probability is less than $2^{-164}$ - negligible in practice. The Kyber parameters were carefully chosen to minimise this without compromising security.
 
 ---
 
