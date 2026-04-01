@@ -180,7 +180,7 @@ To decrypt $\mathbf{c} = (c_1, c_2)$, Alice uses private key $\mathbf{s}$:
 
 $$\mathbf{m} = \text{Round}_q\left(v' - \mathbf{s}^T \cdot \mathbf{u}'\right)$$
 
-**Why this works:** The quantity $v' - \mathbf{s}^T \cdot \mathbf{u}'$ reduces algebraically to approximately $\lceil q/2 \rceil \cdot \mathbf{m}$ plus a small error polynomial $E(x) = e^T r + e_2 - s^T e_1$. As long as $\|E\|_\infty < q/4$, the rounding function correctly recovers $\mathbf{m}$.
+**Why this works:** The quantity $v' - \mathbf{s}^T \cdot \mathbf{u}'$ reduces algebraically to approximately $\lceil q/2 \rceil \cdot \mathbf{m}$ plus a small error polynomial $E(x) = e^T r + e_2 - s^T e_1$. As long as $\||E\||_\infty < q/4$, the rounding function correctly recovers $\mathbf{m}$.
 
 ### 4.6 Decryption Failure - Negligible but Non-Zero
 
