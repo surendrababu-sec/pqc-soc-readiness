@@ -210,7 +210,7 @@ This produces a near-Gaussian distribution as required by lattice security argum
 
 ### 5.4 Fast Polynomial Multiplication via NTT
 
-Naïve multiplication in $R_q = Z_3329[x]/(x^{256}+1)$ takes $O(n^2)$ operations. The **Number-Theoretic Transform (NTT)** reduces this to $O(n \log n)$, enabled by the fact that 256th roots of unity exist in $Z_3329 $. Full NTT details are covered in Month 4.
+Naïve multiplication in $R_q = Z_{3329}[x]/(x^{256}+1)$ takes $O(n^2)$ operations. The **Number-Theoretic Transform (NTT)** reduces this to $O(n \log n)$, enabled by the fact that 256th roots of unity exist in $Z_{3329}$. Full NTT details are covered in Month 4.
 
 ---
 
