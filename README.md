@@ -40,7 +40,6 @@ Monthly research documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
 
 ## Author
 Surendra Babu | MSc Information Security & Digital Forensics 
-(Distinction), University of East London  
-PhD research supervised by Dr. Elias Eze, UEL  
+(Distinction), University of East London    
 Focused on defensive security, SOC operations, and 
 post-quantum cryptographic threats
