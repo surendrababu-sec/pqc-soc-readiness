@@ -178,7 +178,7 @@ To decrypt $\mathbf{c} = (c_1, c_2)$, Alice uses private key $\mathbf{s}$:
 1. Decompress: $\mathbf{u}' = \text{Decompress}_q(c_1, d_u)$ and $v' = \text{Decompress}_q(c_2, d_v)$
 2. Compute:
 
-$$\mathbf{m} = \text{Round}_q\!\left(v' - \mathbf{s}^T \cdot \mathbf{u}'\right)$$
+$$\mathbf{m} = \text{Round}_q\left(v' - \mathbf{s}^T \cdot \mathbf{u}'\right)$$
 
 **Why this works:** The quantity $v' - \mathbf{s}^T \cdot \mathbf{u}'$ reduces algebraically to approximately $\lceil q/2 \rceil \cdot \mathbf{m}$ plus a small error polynomial $E(x) = e^T r + e_2 - s^T e_1$. As long as $\|E\|_\infty < q/4$, the rounding function correctly recovers $\mathbf{m}$.
 
