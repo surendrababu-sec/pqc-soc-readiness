@@ -219,7 +219,7 @@ Naïve multiplication in $R_q = Z_{3329}[x]/(x^{256}+1)$ takes $O(n^2)$ operatio
 The **FO transform** using hash functions $G, H, J$ upgrades Kyber-PKE to full CCA security:
 
 **Encapsulation (Bob):**
-1. Select random $\mathbf{m} \in {0,1}^{256}$
+1. Select random $\mathbf{m} \in \\{0,1\\}^{256}$
 2. Compute $(K, R) = G(\mathbf{m},\, H(\text{ek}))$
 3. Encrypt $\mathbf{m}$ using Kyber-PKE with randomness $R$; output secret key $K$ and ciphertext $\mathbf{c}$
 
