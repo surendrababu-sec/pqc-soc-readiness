@@ -74,8 +74,8 @@ A core concept in lattice cryptography is the *size* of a polynomial.
 Kyber uses the **infinity norm** $\||\cdot\||_\infty$:
 
 - For an integer $x \in Z_q$: $\||x\||_\infty = |x \bmod s q|$ (symmetric mod)
-- For a polynomial $f \in R_q$: $\||f\||_\infty = \max_i \||f_i\||_\infty$
-- For a module element $\mathbf{a} \in R_q^k$: $\||\mathbf{a}\||_\infty = \max_i \||a_i\||_\infty$
+- For a polynomial $f \in R_q$: $\||f\||_\infty = \max \||f_i\||_\infty$
+- For a module element $\mathbf{a} \in R_q^k$: $\||\mathbf{a}\||_\infty = \max \||a_i\||_\infty$
 
 A polynomial is called **"small"** if $\||f\||_\infty$ is small relative to $q/2$. 
 The set of small polynomials bounded by $\eta$ is:
