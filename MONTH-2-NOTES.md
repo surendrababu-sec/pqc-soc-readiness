@@ -68,15 +68,17 @@ Operations on module elements:
 - Multiplication (inner product) of two vectors in $R_q^k$ produces a polynomial in $R_q$
 - All vectors in $R_q^k$ are written as column vectors
 
-### 2.4 Size of Polynomials - The Infinity Norm
+### 2.4 Size of Polynomials — The Infinity Norm
 
-A core concept in lattice cryptography is the *size* of a polynomial. Kyber uses the **infinity norm** $\|\cdot\|_\infty$:
+A core concept in lattice cryptography is the *size* of a polynomial. 
+Kyber uses the **infinity norm** $\||\cdot\||_\infty$:
 
-- For an integer $x \in \mathbb{Z}_q$: $\|x\|_\infty = |x \bmod_s q|$ (symmetric mod)
+- For an integer $x \in Z_q$: $\|x\|_\infty = |x \bmod_s q|$ (symmetric mod)
 - For a polynomial $f \in R_q$: $\|f\|_\infty = \max_i \|f_i\|_\infty$
 - For a module element $\mathbf{a} \in R_q^k$: $\|\mathbf{a}\|_\infty = \max_i \|a_i\|_\infty$
 
-A polynomial is called **"small"** if $\|f\|_\infty$ is small relative to $q/2$. The set of small polynomials bounded by $\eta$ is:
+A polynomial is called **"small"** if $\|f\|_\infty$ is small relative to $q/2$. 
+The set of small polynomials bounded by $\eta$ is:
 
 $$S_\eta = \{ f \in R_q \mid \|f\|_\infty \leq \eta \}$$
 
