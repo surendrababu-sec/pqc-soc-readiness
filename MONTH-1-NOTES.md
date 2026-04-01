@@ -1,7 +1,3 @@
-# Research Notes - PQC SOC Readiness Project
-
----
-
 ## Month 1 - Post-Quantum Cryptography & The Harvest Now, Decrypt Later Threat
 
 ### 1. The Foundation We're All Trusting Right Now
