@@ -80,7 +80,7 @@ Kyber uses the **infinity norm** $\||\cdot\||_\infty$:
 A polynomial is called **"small"** if $\||f\||_\infty$ is small relative to $q/2$. 
 The set of small polynomials bounded by $\eta$ is:
 
-$$S_\eta = \{ f \in R_q \mid \||f\||_\infty \leq \eta \}$$
+$$S_\eta = { f \in R_q \mid \||f\||_\infty \leq \eta }$$
 
 This distinction between large and small polynomials is the foundation of the security argument - error terms are small, but public parameters are large and computationally indistinguishable from random.
 
