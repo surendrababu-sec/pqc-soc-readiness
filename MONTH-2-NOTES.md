@@ -26,7 +26,7 @@ Post-quantum cryptography needs to be built on a different class of mathematical
 
 The foundation of Kyber's arithmetic is modular integer arithmetic over $\mathbb{Z}_q$ - the set of integers $\{0, 1, 2, \ldots, q-1\}$ where $q$ is a prime modulus. All addition, subtraction and multiplication operations are performed modulo $q$.
 
-An important concept is **symmetric mod**: rather than representing integers in the range $[0, q-1]$, we centre them around zero, giving the range $[-(q-1)/2,\; (q-1)/2]$. This symmetric representation is crucial for measuring the *size* of elements - a concept that underpins the security of lattice-based schemes.
+An important concept is **symmetric mod**: rather than representing integers in the range $[0, q-1]$, we centre them around zero, giving the range $[-(q-1)/2, (q-1)/2]$. This symmetric representation is crucial for measuring the *size* of elements - a concept that underpins the security of lattice-based schemes.
 
 For ML-KEM-768, **$q = 3329$**.
 
