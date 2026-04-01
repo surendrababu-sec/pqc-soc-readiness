@@ -147,7 +147,7 @@ Alice generates her key pair:
 
 $$\mathbf{t} = \mathbf{A} \cdot \mathbf{s} + \mathbf{e}$$
 
-4. **Public (encryption) key:** $(\rho, \mathbf{t})$ — $\rho$ replaces the full matrix $\mathbf{A}$ since anyone knowing $\rho$ can regenerate $\mathbf{A}$ via SHAKE-128
+4. **Public (encryption) key:** $(\rho, \mathbf{t})$ - $\rho$ replaces the full matrix $\mathbf{A}$ since anyone knowing $\rho$ can regenerate $\mathbf{A}$ via SHAKE-128
 5. **Private (decryption) key:** $\mathbf{s}$
 
 Computing $\mathbf{s}$ from $(\mathbf{A}, \mathbf{t})$ is an instance of MLWE - computationally infeasible by assumption.
