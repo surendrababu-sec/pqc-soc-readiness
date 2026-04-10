@@ -33,7 +33,7 @@ It's the end of the grace period.
   networked systems
 
 ## Project Status
-Currently in Phase 1 - Research & Foundation (Month 2 of 10)
+Currently in Phase 1 - Research & Foundation (Month 3 of 10)
 
 ## Research Notes
 Monthly research documented in [RESEARCH-NOTES.md](RESEARCH-NOTES.md)
