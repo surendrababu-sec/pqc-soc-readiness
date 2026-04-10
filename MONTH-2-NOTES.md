@@ -6,7 +6,7 @@
 
 Month 1 established *why* post-quantum cryptography matters - the harvest-now-decrypt-later threat model, the vulnerability of RSA and ECC to Shor's algorithm, and the NIST standardisation response. Month 2 goes deeper into *how* the solution actually works.
 
-This month's focus is CRYSTALS-Kyber, standardised by NIST as FIPS 203 under the name ML-KEM (Module-Lattice-based Key Encapsulation Mechanism). Understanding Kyber properly requires working through the mathematical structures that make it both functional and secure — the algebra, the hardness assumptions, the encryption scheme, and the engineering optimisations that make it deployable at scale.
+This month's focus is CRYSTALS-Kyber, standardised by NIST as FIPS 203 under the name ML-KEM (Module-Lattice-based Key Encapsulation Mechanism). Understanding Kyber properly requires working through the mathematical structures that make it both functional and secure - the algebra, the hardness assumptions, the encryption scheme, and the engineering optimisations that make it deployable at scale.
 
 The source material for this month is the lecture series by Professor Alfred Menezes (University of Waterloo, August 2024), combined with the NIST FIPS 203 specification and the original CRYSTALS-Kyber IEEE paper (2018, European Symposium on Security and Privacy).
 
