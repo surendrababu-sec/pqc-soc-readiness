@@ -77,7 +77,7 @@ Understanding Schnorr is essential because Dilithium is a direct lattice adaptat
 
 **Why verification works:** Since $z = y + ca \mod n$, we have $g^z = g^{y+ca}$, so $g^y = g^z(g^a)^{-c}$, meaning $w = w'$.
 
-The terminology — **commitment** ($w$), **challenge** ($c$), **response** ($z$) — carries directly into Dilithium.
+The terminology - **commitment** ($w$), **challenge** ($c$), **response** ($z$) — carries directly into Dilithium.
 
 ---
 
@@ -90,9 +90,9 @@ The first attempt at a lattice-based signature scheme takes the Schnorr structur
 2. Computes $t = As_1 + s_2$
 3. Her verification (public) key is $(A, t)$; her signing (private) key is $(s_1, s_2)$
 
-Note: Computing $s_1$ from $(A, t)$ is an instance of MLWE — hard by assumption.
+Note: Computing $s_1$ from $(A, t)$ is an instance of MLWE - hard by assumption.
 
-**Signature generation:** To sign $M \in \{0,1\}^*$, Alice:
+**Signature generation:** To sign M ∈ {0,1}*, Alice:
 1. Selects $y \in_R \tilde{S}_{\gamma_1}^\ell$
 2. Computes $w = Ay$ (commitment)
 3. Computes $c = H(M \| w)$ (challenge), where $c \in B_\tau$
@@ -115,9 +115,9 @@ This is the central problem that the toy version solves.
 
 The toy version introduces the key insight: rather than using the full commitment $w$, the signer uses only the **high-order bits** of $w$. This allows verification without requiring knowledge of $s_2$.
 
-**Key generation:** Same as the first attempt — verification key is $(A, t)$, signing key is $(s_1, s_2)$.
+**Key generation:** Same as the first attempt - verification key is $(A, t)$, signing key is $(s_1, s_2)$.
 
-**Signature generation:** To sign $M \in \{0,1\}^*$, Alice:
+**Signature generation:** To sign M ∈ {0,1}*, Alice:
 1. Found $\leftarrow$ false (repeatedly selects random $y$'s)
 2. While Found = false do:
    - a) Select $y \in_R \tilde{S}_{\gamma_1}^\ell$
@@ -160,7 +160,7 @@ The toy version works in principle but has five engineering problems that need r
 
 ### Problem #3: Random Bits Required for Signing
 
-**Problem:** A large number of random bits are needed for each iteration — specifically for step (a): select $y \in_R \tilde{S}_{\gamma_1}^\ell$.
+**Problem:** A large number of random bits are needed for each iteration - specifically for step (a): select $y \in_R \tilde{S}_{\gamma_1}^\ell$.
 
 **Solution:** Generate $y$ deterministically from a secret seed $\rho''$ and a counter $\kappa$, where $\rho'' = H(K \| \text{rnd} \| \mu, 512)$. The counter $\kappa$ increments by $\ell$ each iteration. This makes the signature generation algorithm **deterministic** (when rnd $= 0^{256}$) or **hedged** (when rnd is random). No external randomness is required during the signing loop.
 
@@ -220,8 +220,8 @@ Specific uses:
 ### 7.3 Key Generation
 
 Alice does:
-1. Select $\xi \in_R \{0,1\}^{256}$
-2. Compute $(\rho, \rho', K) = H(\xi, 1024)$, where $\rho \in \{0,1\}^{256}$, $\rho' \in \{0,1\}^{512}$, $K \in \{0,1\}^{256}$
+1. Select $\xi \in_R$ {0,1}²⁵⁶
+2. Compute $(\rho, \rho', K) = H(\xi, 1024)$, where $\rho$ ∈ {0,1}²⁵⁶, $\rho'$ ∈ {0,1}⁵¹² and $K$ ∈ {0,1}²⁵⁶
 3. Compute $A = \text{ExpandA}(\rho)$ ($A \in R_q^{k \times \ell}$)
 4. Compute $(s_1, s_2) = \text{ExpandS}(\rho')$ ($(s_1, s_2) \in S_\eta^\ell \times S_\eta^k$)
 5. Compute $t = As_1 + s_2$ ($t \in R_q^k$)
@@ -277,7 +277,7 @@ Therefore $\tilde{c} = H(\mu \| w_1', 2\lambda)$ matches, and the signature is a
 
 **Signature forgery:** The adversary's task is: given $(A, t)$, find $(M, \tilde{c}, z)$ such that $\|z\|_\infty < \gamma_1 - \beta$ and $\tilde{c} = H(\mu \| w_1)$, where $\mu = H(M)$, $w_1 = \text{HighBits}(Az - ct, 2\gamma_2)$, and $c = \text{SampleInBall}(\tilde{c})$.
 
-Finding a suitable $z$ requires solving the inhomogeneous MSIS (I-MSIS) problem — an instance of the (inhomogeneous) Module Short Integer Solutions problem. Since the adversary's forgery task reduces to I-MSIS, and MSIS has no known efficient algorithm (classical or quantum), the scheme is secure.
+Finding a suitable $z$ requires solving the inhomogeneous MSIS (I-MSIS) problem - an instance of the (inhomogeneous) Module Short Integer Solutions problem. Since the adversary's forgery task reduces to I-MSIS, and MSIS has no known efficient algorithm (classical or quantum), the scheme is secure.
 
 **Security claim:** Dilithium (without t compression) is existentially unforgeable against chosen-message attack assuming that D-MLWE and MSIS are intractable, and $H$ is modelled as a random function.
 
@@ -364,8 +364,8 @@ V3d incorporates all five problem solutions plus t compression and hint bits int
 ### 9.1 Key Generation
 
 Alice does:
-1. Select $\xi \in_R \{0,1\}^{256}$
-2. Compute $(\rho, \rho', K) = H(\xi, 1024)$, where $\rho \in \{0,1\}^{256}$, $\rho' \in \{0,1\}^{512}$, $K \in \{0,1\}^{256}$
+1. Select $\xi \in_R$ {0,1}²⁵⁶
+2. Compute $(\rho, \rho', K) = H(\xi, 1024)$, where $\rho$ ∈ {0,1}²⁵⁶, $\rho'$ ∈ {0,1}⁵¹² and $K$ ∈ {0,1}²⁵⁶
 3. Compute $A = \text{ExpandA}(\rho)$ ($A \in R_q^{k \times \ell}$)
 4. Compute $(s_1, s_2) = \text{ExpandS}(\rho')$ ($(s_1, s_2) \in S_\eta^\ell \times S_\eta^k$)
 5. Compute $t = As_1 + s_2$ ($t \in R_q^k$)
@@ -376,7 +376,7 @@ Alice's verification key is $PK = (\rho, t_1)$; her signature key is $SK = (\rho
 
 ### 9.2 Signature Generation
 
-To sign $M \in \{0,1\}^*$, Alice does:
+To sign M ∈ {0,1}*, Alice does:
 1. Compute $A = \text{ExpandA}(\rho)$
 2. Compute $\mu = H(tr \| M, 512)$
 3. Compute $\rho'' = H(K \| \text{rnd} \| \mu, 512)$
@@ -449,9 +449,9 @@ Security categories 2, 3, 5: fastest known attacks require at least as much reso
 | ML-DSA-65 | 3 | 4,032 | 1,952 | 3,309 |
 | ML-DSA-87 | 5 | 4,896 | 2,592 | 4,627 |
 
-Key sizes and signature sizes are significantly larger than for RSA and ECDSA. When migrating from RSA and ECC to Kyber and Dilithium, these increased sizes will be challenging to deal with in some scenarios — particularly in constrained network protocols and IoT environments.
+Key sizes and signature sizes are significantly larger than for RSA and ECDSA. When migrating from RSA and ECC to Kyber and Dilithium, these increased sizes will be challenging to deal with in some scenarios - particularly in constrained network protocols and IoT environments.
 
-For context, an ECDSA signature (P-256) is 64 bytes. An ML-DSA-87 signature is 4,627 bytes — over 70 times larger. This size difference is the direct cost of quantum resistance, and it has practical implications for TLS handshake overhead, certificate chain sizes, and bandwidth-constrained deployments.
+For context, an ECDSA signature (P-256) is 64 bytes. An ML-DSA-87 signature is 4,627 bytes - over 70 times larger. This size difference is the direct cost of quantum resistance, and it has practical implications for TLS handshake overhead, certificate chain sizes, and bandwidth-constrained deployments.
 
 ### 10.3 ML-DSA-87 Key Composition (for reference)
 
@@ -495,7 +495,7 @@ The full specification in FIPS 204 includes several implementation details beyon
 - ExpandA($\rho$) uses SHAKE128 for matrix expansion
 - ExpandS($\rho'$) uses SHAKE256 for secret key expansion
 - ExpandMask($\rho'', \kappa$) uses SHAKE256 for mask generation
-- Full description of SampleInBall : $\{0,1\}^{2\lambda} \to B_\tau$
+- Full description of SampleInBall : {0,1}$^{2\lambda}$ → $B_\tau$
 - Formatting for bit strings and byte strings
 - An optional upper bound on the number of iterations in signature generation
 - **Number-Theoretic Transform (NTT)** for fast polynomial multiplication in $R_q = \mathbb{Z}_{2^{23}-2^{13}+1}[x]/(x^{256}+1)$ — will be added upon completion of Month 3 notes
@@ -506,11 +506,11 @@ The full specification in FIPS 204 includes several implementation details beyon
 
 Understanding Dilithium at this depth matters for the PQC-SOC Readiness Scanner in two direct ways.
 
-**Detection side:** The scanner identifies systems using RSA or ECDSA for digital signatures — the quantum-vulnerable schemes that Dilithium replaces. Knowing the exact structure of ML-DSA allows the scanner to generate accurate migration recommendations: not just "switch to a post-quantum signature scheme" but specific guidance on which parameter set applies to a given security requirement, and what the key and signature size implications will be.
+**Detection side:** The scanner identifies systems using RSA or ECDSA for digital signatures - the quantum-vulnerable schemes that Dilithium replaces. Knowing the exact structure of ML-DSA allows the scanner to generate accurate migration recommendations: not just "switch to a post-quantum signature scheme" but specific guidance on which parameter set applies to a given security requirement, and what the key and signature size implications will be.
 
-**Infrastructure side:** An ML-DSA-87 signature is 4,627 bytes. An ECDSA signature is 64 bytes. This 70x size difference has real consequences for TLS handshake overhead, certificate chains, firmware signing pipelines, and any protocol where signature size is constrained. This is the same deployment challenge discussed at the end of Month 2 — how to integrate these larger, more compute-intensive schemes into environments where every byte and every millisecond matters, from 6G wireless networks to constrained IoT infrastructure.
+**Infrastructure side:** An ML-DSA-87 signature is 4,627 bytes. An ECDSA signature is 64 bytes. This 70x size difference has real consequences for TLS handshake overhead, certificate chains, firmware signing pipelines, and any protocol where signature size is constrained. This is the same deployment challenge discussed at the end of Month 2 - how to integrate these larger, more compute-intensive schemes into environments where every byte and every millisecond matters, from 6G wireless networks to constrained IoT infrastructure.
 
-Together, Kyber (Month 2) and Dilithium (Month 3) form the core of the NIST PQC standardisation response: Kyber for key encapsulation, Dilithium for digital signatures. Month 4 will move from mathematical foundations into the scanner development phase — building the detection logic that operationalises this research.
+Together, Kyber (Month 2) and Dilithium (Month 3) form the core of the NIST PQC standardisation response: Kyber for key encapsulation, Dilithium for digital signatures. Month 4 will move from mathematical foundations into the scanner development phase - building the detection logic that operationalises this research.
 
 ---
 
