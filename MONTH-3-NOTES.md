@@ -1,14 +1,14 @@
-# Month 3 – Lattice-Based Digital Signatures: Mathematical Foundations of CRYSTALS-Dilithium (ML-DSA)
+# Month 3 - Lattice-Based Digital Signatures: Mathematical Foundations of CRYSTALS-Dilithium (ML-DSA)
 
 ---
 
 ## Overview
 
-Month 2 covered CRYSTALS-Kyber — a Key Encapsulation Mechanism built on lattice problems. Kyber solves the problem of secure key exchange. But secure communication requires more than just confidentiality. It also requires authentication: the ability to prove that a message genuinely came from who it claims to come from, and that it hasn't been tampered with in transit.
+Month 2 covered CRYSTALS-Kyber - a Key Encapsulation Mechanism built on lattice problems. Kyber solves the problem of secure key exchange. But secure communication requires more than just confidentiality. It also requires authentication: the ability to prove that a message genuinely came from who it claims to come from, and that it hasn't been tampered with in transit.
 
 That's what digital signatures do. And in a post-quantum world, we need digital signatures that remain secure even against adversaries armed with quantum computers.
 
-This month's focus is CRYSTALS-Dilithium, standardised by NIST as FIPS 204 under the name ML-DSA (Module-Lattice-based Digital Signature Algorithm). Like Kyber, Dilithium is built on lattice problems — specifically the hardness of MLWE and MSIS — and its design is most clearly understood as a lattice-based adaptation of the classical Schnorr signature scheme.
+This month's focus is CRYSTALS-Dilithium, standardised by NIST as FIPS 204 under the name ML-DSA (Module-Lattice-based Digital Signature Algorithm). Like Kyber, Dilithium is built on lattice problems - specifically the hardness of MLWE and MSIS, and its design is most clearly understood as a lattice-based adaptation of the classical Schnorr signature scheme.
 
 The source material for this month is the lecture series by Professor Alfred Menezes (University of Waterloo, August 2024), combined with the NIST FIPS 204 specification and the original CRYSTALS-Dilithium paper (IACR Transactions on Cryptographic Hardware and Embedded Systems, Vol. 2018, No. 1, pp. 238–268).
 
@@ -18,17 +18,17 @@ The source material for this month is the lecture series by Professor Alfred Men
 
 Before going into the scheme, it helps to have the notation clear upfront. These definitions carry through all versions of Dilithium.
 
-- $\mathbb{Z}_q$, $\text{mod}\, q$, $\text{mods}\, q$, $\||\cdot\||_\infty$ — modular arithmetic and infinity norm (same as Month 2)
-- $R_q = \mathbb{Z}_q[x]/(x^n + 1)$ — the polynomial ring
-- $S_\eta$ — set of polynomials in $R_q$ with coefficients in $[-\eta, \eta]$ (using $\text{mods}\, q$)
-- $\tilde{S}_{\gamma_1}$ — set of polynomials in $R_q$ with coefficients in $(-\gamma_1, \gamma_1]$
-- $(k, \ell)$ with $k > \ell$ — matrix dimensions
-- $B_\tau$ — polynomials in $S_1$ with exactly $\tau$ coefficients equal to $\pm 1$ (the challenge space)
-- $\beta = \tau\eta$ — bound on the infinity norm of $cs_i$ when $c \in B_\tau$
-- $\gamma_2$ and $\alpha = 2\gamma_2$ — parameters for the Decompose function
-- $\lambda$ — half the bit-length of the signature component $\tilde{c}$
-- $d$ — number of bits dropped from $t$ during compression
-- $\omega$ — maximum number of 1's in the hint vector $h$
+- $\mathbb{Z}_q$, $\text{mod}\, q$, $\text{mods}\, q$, $\||\cdot\||_\infty$ - modular arithmetic and infinity norm (same as Month 2)
+- $R_q = \mathbb{Z}_q[x]/(x^n + 1)$ - the polynomial ring
+- $S_\eta$ - set of polynomials in $R_q$ with coefficients in $[-\eta, \eta]$ (using $\text{mods}\, q$)
+- $\tilde{S}_{\gamma_1}$ - set of polynomials in $R_q$ with coefficients in $(-\gamma_1, \gamma_1]$
+- $(k, \ell)$ with $k > \ell$ - matrix dimensions
+- $B_\tau$ - polynomials in $S_1$ with exactly $\tau$ coefficients equal to $\pm 1$ (the challenge space)
+- $\beta = \tau\eta$ - bound on the infinity norm of $cs_i$ when $c \in B_\tau$
+- $\gamma_2$ and $\alpha = 2\gamma_2$ - parameters for the Decompose function
+- $\lambda$ - half the bit-length of the signature component $\tilde{c}$
+- $d$ - number of bits dropped from $t$ during compression
+- $\omega$ - maximum number of 1's in the hint vector $h$
 
 **ML-DSA-87 Domain Parameters** (used throughout for concreteness):
 
@@ -52,19 +52,19 @@ Before going into the scheme, it helps to have the notation clear upfront. These
 
 Classical digital signature schemes like RSA-based signatures and ECDSA derive their security from the integer factorisation and elliptic curve discrete logarithm problems respectively. Both are efficiently solvable by Shor's algorithm on a quantum computer.
 
-A quantum-safe signature scheme needs to be built on a problem that remains hard even with quantum computation. Dilithium achieves this by building on the **Schnorr signature scheme** as a conceptual template, but replacing its group-theoretic hardness assumption with lattice hardness assumptions — specifically MLWE and MSIS.
+A quantum-safe signature scheme needs to be built on a problem that remains hard even with quantum computation. Dilithium achieves this by building on the **Schnorr signature scheme** as a conceptual template, but replacing its group-theoretic hardness assumption with lattice hardness assumptions - specifically MLWE and MSIS.
 
 ---
 
 ## 3. The Schnorr Signature Scheme
 
-Understanding Schnorr is essential because Dilithium is a direct lattice adaptation of it. The core idea — commit, challenge, respond — carries straight through.
+Understanding Schnorr is essential because Dilithium is a direct lattice adaptation of it. The core idea - commit, challenge, respond - carries straight through.
 
 **Domain parameters:** A cyclic group of order $n$, generator $g$, and a hash function $H$.
 
 **Key generation:** Alice selects $a \in_R [1, n-1]$ and computes $g^a$. Her verification (public) key is $g^a$; her signing (private) key is $a$. Computing $a$ from $g^a$ is the discrete logarithm problem.
 
-**Signature generation:** To sign $M \in \{0,1\}^*$, Alice:
+**Signature generation:** To sign M ∈ {0,1}*, Alice:
 1. Selects $y \in_R [1, n-1]$ and computes $w = g^y$ — the **commitment**
 2. Computes $c = H(M \| w)$ — the **challenge**
 3. Computes $z = y + ca \mod n$ — the **response**
