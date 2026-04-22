@@ -49,9 +49,9 @@ Data being stolen today may not be exploited for 10 years - but it will be.
 ### 5. NIST Has Responded - But Most Organisations Haven't
 In 2024, NIST finalised the first official Post-Quantum Cryptography standards:
 
-- **FIPS 203** (CRYSTALS-Kyber) - quantum-safe encryption & key exchange
-- **FIPS 204** (CRYSTALS-Dilithium) - quantum-safe digital signatures
-- **FIPS 205** (SPHINCS+) - digital signatures, hash-based backup
+- **FIPS 203** (ML-KEM / CRYSTALS-Kyber) - quantum-safe encryption & key exchange
+- **FIPS 204** (ML-DSA / CRYSTALS-Dilithium) - quantum-safe digital signatures
+- **FIPS 205** (SLH-DSA / SPHINCS+) - digital signatures, hash-based backup
 
 NIST isn't just advising migration. It's directing all critical 
 infrastructure to begin transitioning now.
