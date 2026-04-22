@@ -143,7 +143,7 @@ Kyber is a **Key Encapsulation Mechanism (KEM)** constructed in two stages:
 
 Alice generates her key pair:
 
-1. Select random seed $\rho \in {0,1}²⁵⁶ and expand to generate public matrix $\mathbf{A} \in R_q^{k \times k}$ using SHAKE-128
+1. Select random seed **ρ** ∈ {0,1}²⁵⁶ and expand to generate public matrix $\mathbf{A} \in R_q^{k \times k}$ using SHAKE-128
 2. Sample small secret $\mathbf{s} \in S_{\eta_1}^k$ and error $\mathbf{e} \in S_{\eta_2}^k$ using the Central Binomial Distribution
 3. Compute:
 
@@ -158,7 +158,7 @@ Computing $\mathbf{s}$ from $(\mathbf{A}, \mathbf{t})$ is an instance of MLWE - 
 
 ### 4.4 Encryption
 
-To encrypt message $\mathbf{m} \in {0,1}ⁿ for Alice, Bob does:
+To encrypt message **m** ∈ {0,1}ⁿ for Alice, Bob does:
 
 1. Obtain $(\rho, \mathbf{t})$ and regenerate $\mathbf{A} = \text{Expand}(\rho)$
 2. Sample small $\mathbf{r} \in S_{\eta_1}^k$, $\mathbf{e}_1 \in S_{\eta_2}^k$, $e_2 \in S_{\eta_2}$
