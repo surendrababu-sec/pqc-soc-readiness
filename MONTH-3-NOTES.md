@@ -208,9 +208,9 @@ Decompose extends naturally to polynomials in $R_q$ and vectors of polynomials i
 
 Dilithium uses **SHAKE256** (and also SHAKE128), both specified in FIPS 202 (SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions).
 
-SHAKE256 is an eXtendable-Output Function (XOF). For $M \in \{0,1\}^*$ and $d \geq 1$, SHAKE256$(M, d)$ is the $d$-bit hash of $M$. Being a XOF means that SHAKE256$(M, d')$ is exactly equal to the first $d'$ bits of SHAKE256$(M, d)$ whenever $d' \leq d$.
+SHAKE256 is an eXtendable-Output Function (XOF). For M ∈ {0,1}* and $d \geq 1$, SHAKE256$(M, d)$ is the $d$-bit hash of $M$. Being a XOF means that SHAKE256$(M, d')$ is exactly equal to the first $d'$ bits of SHAKE256$(M, d)$ whenever $d' \leq d$.
 
-For $M \in \{0,1\}^*$ and $d \geq 1$, Dilithium defines $H(M, d) = \text{SHAKE256}(M, d)$.
+For M ∈ {0,1}* and $d \geq 1$, Dilithium defines $H(M, d) = \text{SHAKE256}(M, d)$.
 
 Specific uses:
 - ExpandA($\rho$) uses SHAKE128 to expand the 256-bit seed into the matrix $A$
@@ -234,7 +234,7 @@ Alice's verification key is $PK = (\rho, t)$; her signature key is $SK = (\rho, 
 To sign $M \in \{0,1\}^*$, Alice does:
 1. Compute $A = \text{ExpandA}(\rho)$
 2. Compute $\mu = H(tr \| M, 512)$
-3. Compute $\rho'' = H(K \| \text{rnd} \| \mu, 512)$, where either rnd $= 0^{256}$ (deterministic) or rnd $\in_R \{0,1\}^{256}$ (hedged)
+3. Compute $\rho'' = H(K \| \text{rnd} \| \mu, 512)$, where either rnd $= 0^{256}$ (deterministic) or rnd $\in_R$ {0,1}²⁵⁶ (hedged)
 4. $\kappa \leftarrow 0$
 5. Found $\leftarrow$ false
 6. While Found = false do:
@@ -339,12 +339,12 @@ This modification handles the boundary case where the simplified Decompose would
 
 **MakeHint$(z, r, \alpha)$:**
 - Input: $r \in [0, q-1]$, $-\alpha/2 \leq z \leq \alpha/2$
-- Output: a hint bit $h \in \{0, 1\}$
+- Output: a hint bit h ∈ {0,1}
 1. Set $h = 1$ if HighBits$(r + z, \alpha) \neq$ HighBits$(r, \alpha)$; else $h = 0$
 2. Return $h$
 
 **UseHint$(h, r, \alpha)$:**
-- Input: $h \in \{0,1\}$, $r \in [0, q-1]$
+- Input: h ∈ {0,1}, r∈[0,q−1]
 - Output: HighBits$(r + z, \alpha)$ for any $z$ with MakeHint$(z, r, \alpha) = h$
 1. Compute $(r_1, r_0) = \text{Decompose}(r, \alpha)$
 2. If $h = 1$ and $r_0 > 0$: return $r_1 + 1 \mod m$
