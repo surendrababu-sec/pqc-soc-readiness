@@ -18,7 +18,7 @@ It's the end of the grace period.
 
 ## What am I producing?
 - A research paper (target publication: arXiv.org cs.CR)
-- An open-source cryptographic vulnerability scanner (Python)
+- An open-source cryptographic vulnerability scanner (Python) - in development
 - A practical SOC-focused PQC threat model mapped to 
   NIST PQC standards
 
