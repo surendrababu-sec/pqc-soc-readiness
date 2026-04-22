@@ -12,3 +12,11 @@ NIST PQC standards (FIPS 203/204/205) · Practical quantum readiness roadmap
 Topics: Modular arithmetic · Polynomial rings · MLWE/D-MLWE hardness · 
 Kyber-PKE key generation · Encryption/decryption · FO transform · 
 ML-KEM parameter sets · Key and ciphertext sizes
+
+## Month 3 — Lattice-Based Digital Signatures: Mathematical Foundations of CRYSTALS-Dilithium
+[Read Month 3 Notes](MONTH-3-NOTES.md)
+
+Topics: Schnorr signature scheme · Dilithium first attempt & toy version · 
+Rejection sampling · HighBits/LowBits · t compression · Hint bits · 
+ML-DSA key generation · Signature generation/verification · 
+ML-DSA parameter sets · Key and signature sizes
