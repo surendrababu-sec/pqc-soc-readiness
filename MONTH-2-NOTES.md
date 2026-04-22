@@ -210,7 +210,7 @@ This produces a near-Gaussian distribution as required by lattice security argum
 
 ### 5.4 Fast Polynomial Multiplication via NTT
 
-Naïve multiplication in $R_q = Z_{3329}[x]/(x^{256}+1)$ takes $O(n^2)$ operations. The **Number-Theoretic Transform (NTT)** reduces this to $O(n \log n)$, enabled by the fact that 256th roots of unity exist in $Z_{3329}$. Full NTT details are covered in Month 4.
+Naïve multiplication in $R_q = Z_{3329}[x]/(x^{256}+1)$ takes $O(n^2)$ operations. The **Number-Theoretic Transform (NTT)** reduces this to $O(n \log n)$, enabled by the fact that 256th roots of unity exist in $Z_{3329}$. Full NTT details will be added upon completion of Month 3 notes.
 
 ---
 
@@ -219,7 +219,7 @@ Naïve multiplication in $R_q = Z_{3329}[x]/(x^{256}+1)$ takes $O(n^2)$ operatio
 The **FO transform** using hash functions $G, H, J$ upgrades Kyber-PKE to full CCA security:
 
 **Encapsulation (Bob):**
-1. Select random $\mathbf{m} \in \\{0,1\\}^{256}$
+1. Select random $\mathbf{m} \in {0,1}^{256}$
 2. Compute $(K, R) = G(\mathbf{m},\, H(\text{ek}))$
 3. Encrypt $\mathbf{m}$ using Kyber-PKE with randomness $R$; output secret key $K$ and ciphertext $\mathbf{c}$
 
@@ -250,7 +250,7 @@ Understanding Kyber's internals at this depth is directly relevant to the PQC-SO
 
 **Detection side:** The scanner identifies systems still using RSA and ECC. Knowing the exact Kyber parameters and key sizes allows it to generate accurate migration recommendations - not generic advice, but specific guidance: migrate to ML-KEM-768, expect public keys of 1,184 bytes and ciphertexts of 1,088 bytes.
 
-**Infrastructure side:** The size and computational overhead differences between classical and post-quantum schemes have direct implications for network infrastructure - TLS handshake sizes, certificate chain lengths, and processing overhead on constrained devices. This is precisely the problem Surrey's channel-aware PQC project addresses for 6G wireless networks: how to deploy these larger, more compute-intensive schemes where every byte and every millisecond matters.
+**Infrastructure side:** The size and computational overhead differences between classical and post-quantum schemes have direct implications for network infrastructure - TLS handshake sizes, certificate chain lengths, and processing overhead on constrained devices. This is precisely the deployment challenge that active PQC research is addressing - how to integrate these larger, more compute-intensive schemes into environments where every byte and every millisecond matters, from 6G wireless networks to constrained IoT infrastructure.
 
 Month 3 will cover CRYSTALS-Dilithium (ML-DSA, FIPS 204) - the post-quantum digital signature scheme.
 
