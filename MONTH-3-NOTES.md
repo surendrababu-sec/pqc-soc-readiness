@@ -231,7 +231,7 @@ Alice's verification key is $PK = (\rho, t)$; her signature key is $SK = (\rho, 
 
 ### 7.4 Signature Generation
 
-To sign $M \in \{0,1\}^*$, Alice does:
+To sign M ∈ {0,1}*, Alice does:
 1. Compute $A = \text{ExpandA}(\rho)$
 2. Compute $\mu = H(tr \| M, 512)$
 3. Compute $\rho'' = H(K \| \text{rnd} \| \mu, 512)$, where either rnd $= 0^{256}$ (deterministic) or rnd $\in_R$ {0,1}²⁵⁶ (hedged)
