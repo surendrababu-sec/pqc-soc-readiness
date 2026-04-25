@@ -114,3 +114,36 @@ def display_results(target, findings):
 
     # Print the finished table to the terminal
     console.print(results_table)
+
+# This is the main runner
+# Takes the target from the user, runs the scab, and shows the results.
+if __name__ == "__main__":
+
+    # Ask the user which domain they want to scan.
+    target = input("Enter target domain to scan (e.g. example.com): ")
+
+    try:
+
+        # Step 1: Connect to the target and grab its certificate.
+        console.print(f"\n[bold cyan]Connecting to {target}...[/bold cyan]")
+        certificate = get_certificate(target)
+
+        # Step 2: Look inside the certificate and analyse what we found.
+        console.print(f"[bold cyan]Analysing certificate...[/bold cyan]")
+        findings = analyse_certificate(certificate)
+
+        #Step 3: Display everything in a clean table.
+        display_results(target, findings)
+
+    # Target domain  doesn't exist, or can't be found.
+    except socket.gaierror:
+        console.print(f"\n[bold red]Error: Could not find '{target}'. Check the domain and try again.[/bold red]")
+
+    # Server took too long to respond
+    except TimeoutError:
+        console.print(f"\n[bold red]Error: Connection to '{target}' timed out. Server may be down.[/bold red]")
+
+    # Anything else that goes wrong
+    except Exception as error:
+        console.print(f"\n[bold red]Something went wrong: {error}[/bold red]")
+        
