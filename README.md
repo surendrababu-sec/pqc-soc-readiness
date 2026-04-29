@@ -95,7 +95,7 @@ The scanner is designed in four layers:
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Detection targets:** RSA, ECC, DH, DSA — and identification of any already-deployed PQC (ML-KEM, ML-DSA, SLH-DSA).
+**Detection targets:** RSA, ECC, DH, DSA, and identification of any already-deployed PQC (ML-KEM, ML-DSA, SLH-DSA).
 
 **Recommendation targets:** FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA), with hybrid mode guidance per NIST SP 800-208 during the transition period.
 
@@ -127,24 +127,24 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 The scanner is built on a structured study of the mathematical foundations of post-quantum cryptography. Topics covered to date:
 
 **Lattice-based cryptography**
-- Polynomial rings of the form Rq = Zq[x]/(x^n + 1)
-- Module Learning With Errors (MLWE) and the decisional variant (D-MLWE)
-- Why no known quantum algorithm efficiently solves these problems
+- Polynomial rings of the form Rq = Zq[x]/(x^n + 1).
+- Module Learning With Errors (MLWE) and the decisional variant (D-MLWE).
+- Why no known quantum algorithm efficiently solves these problems.
 
 **CRYSTALS-Kyber (ML-KEM, FIPS 203)**
-- Full key generation, encapsulation, and decapsulation construction
-- IND-CPA → IND-CCA2 via the Fujisaki-Okamoto transform
-- Parameter sets (ML-KEM-512/768/1024) and their overhead implications
+- Full key generation, encapsulation, and decapsulation construction.
+- IND-CPA → IND-CCA2 via the Fujisaki-Okamoto transform.
+- Parameter sets (ML-KEM-512/768/1024) and their overhead implications.
 
 **CRYSTALS-Dilithium (ML-DSA, FIPS 204)**
-- Schnorr signature scheme foundations and lattice adaptation
-- Rejection sampling, HighBits/LowBits decomposition, hint bits
-- Full V3d scheme: key generation, signing, verification, and correctness proof
-- Parameter sets (ML-DSA-44/65/87) and key/signature size implications
+- Schnorr signature scheme foundations and lattice adaptation.
+- Rejection sampling, HighBits/LowBits decomposition, hint bits.
+- Full ML-DSA scheme construction: key generation, signing, verification, and correctness argument.
+- Parameter sets (ML-DSA-44/65/87) and key/signature size implications.
 
 **Classical cryptographic failure**
-- Mathematical basis for RSA and ECC vulnerability under Shor's algorithm
-- Quantum complexity of factoring and the discrete logarithm
+- Mathematical basis for RSA and ECC vulnerability under Shor's algorithm.
+- Quantum complexity of factoring and the discrete logarithm.
 
 **NIST PQC standardisation**
 - FIPS 203 (ML-KEM, key encapsulation)
@@ -153,10 +153,10 @@ The scanner is built on a structured study of the mathematical foundations of po
 - SP 800-208 (transition guidance and hybrid modes)
 
 Full structured notes:
-- [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) — HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation
-- [`MONTH-2-NOTES.md`](MONTH-2-NOTES.md) — CRYSTALS-Kyber mathematical structure, ML-KEM construction
-- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) — CRYSTALS-Dilithium mathematical structure, ML-DSA construction (NTT section pending)
-- [`RESEARCH-NOTES.md`](RESEARCH-NOTES.md) — Index across all research
+- [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) - HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation.
+- [`MONTH-2-NOTES.md`](MONTH-2-NOTES.md) - CRYSTALS-Kyber mathematical structure, ML-KEM construction.
+- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) - CRYSTALS-Dilithium mathematical structure, ML-DSA construction (NTT section pending).
+- [`RESEARCH-NOTES.md`](RESEARCH-NOTES.md) - Index across all research.
 
 ---
 
@@ -181,7 +181,7 @@ pqc-soc-readiness/
 
 ## Roadmap
 
-This project is structured as a 10-month independent research programme. Current phase: **Month 3 - Foundation Phase**.
+This project is structured as a 10-month independent research programme. Current phase: **Month 4 - Detection Layer (Phase 2)**.
 
 **Phase 1 - Foundation (Months 1-3)** ✅ *Complete*
 - Mathematical foundations of PQC schemes
@@ -191,11 +191,11 @@ This project is structured as a 10-month independent research programme. Current
 **Phase 2 - Detection Layer (Months 4-6)** 🟡 *In progress*
 - TLS endpoint probing & certificate analysis
 - Multiple target scanning
-- NIST migration recommendations
 - Initial CLI interface
 
 **Phase 3 - Risk Engine (Months 6-8)** ⏳ *Planned*
 - HNDL severity scoring
+- NIST migration recommendation engine
 - PCAP-based network capture analysis
 - SIEM-ready output formats
 
