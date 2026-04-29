@@ -6,6 +6,7 @@
 
 import ssl
 import socket
+import argparse
 from datetime import datetime
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh
@@ -17,7 +18,7 @@ from rich.panel import Panel
 console = Console()
 
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
-def get_certificate(target):
+def get_certificate(target, port):
 
     # Set up secure connection settings - turning off certificate verification on purpose.
     # This is a scanner, not a browser. It needs to inspect even the broken, expired, and self-signed certificates - those are often the most interesting ones from a security perspective.
@@ -27,7 +28,7 @@ def get_certificate(target):
 
     # Open a basic network connection to the target on port 443 (HTTPS)
     # If the server doesn't respond in 10 sec, give up
-    with socket.create_connection((target, 443), timeout=10) as connection:
+    with socket.create_connection((target, port), timeout=10) as connection:
 
         # Upgrade the basic connection to a secure TLS connection.
         # This is where the handshake happens and the certificate appears.
@@ -128,32 +129,55 @@ def display_results(target, findings):
     console.print(results_table)
 
 # This is the main runner
-# Takes the target from the user, runs the scan, and shows the results.
+# Takes the target and optional port directly from the command line, runs the scan, and shows the results.
 if __name__ == "__main__":
 
-    # Ask the user which domain they want to scan.
-    target = input("Enter target domain to scan (e.g. example.com): ")
+    # Set up the command line interface
+    parser = argparse.ArgumentParser(
+        description=(
+            "PQC-SOC Readiness Scanner\n"
+        "─────────────────────────────────────────────────────────────\n"
+        "Audits TLS certificates for quantum-vulnerable cryptography\n"
+        "(RSA, ECC, DSA, DH) under the Harvest Now, Decrypt Later\n"
+        "(HNDL) threat model.\n\n"
+        "Identifies systems requiring migration to NIST PQC standards:\n"
+        "  FIPS 203 (ML-KEM)  - key encapsulation\n"
+        "  FIPS 204 (ML-DSA)  - digital signatures\n"
+        "  FIPS 205 (SLH-DSA) - hash-based signatures\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    # The domain to scan - this is required, the tool won't run without it.
+    parser.add_argument("target", help="Target domain to scan (e.g. google.com)")
 
+    # Port is optional - if not specified, it defaults to 443 (standard HTTPS)
+    parser.add_argument("--port", type=int, default=443, metavar="port", help="Target port (deafult: 443)")
+
+    # Read what the user typed in the command line and store it
+    arguments = parser.parse_args()
+
+    # Try to run the full scan - if anything goes wrong, the except blocks below handle it.
     try:
 
         # Step 1: Connect to the target and grab its certificate.
-        console.print(f"\n[bold cyan]Connecting to {target}...[/bold cyan]")
-        certificate = get_certificate(target)
+        console.print(f"\n[bold cyan]Connecting to {arguments.target} on port {arguments.port}...[/bold cyan]")
+        certificate = get_certificate(arguments.target, arguments.port)
 
-        # Step 2: Look inside the certificate and analyse what we found.
-        console.print(f"[bold cyan]Analysing certificate...[/bold cyan]")
+        # Step 2: Look inside the certificate and analyse what was found.
+        console.print("[bold cyan]Analysing certificate...[/bold cyan]")
         findings = analyse_certificate(certificate)
 
         # Step 3: Display everything in a clean table.
-        display_results(target, findings)
+        display_results(arguments.target, findings)
 
     # Target domain  doesn't exist, or can't be found.
     except socket.gaierror:
-        console.print(f"\n[bold red]Error: Could not find '{target}'. Check the domain and try again.[/bold red]")
+        console.print(f"\n[bold red]Error: Could not find '{arguments.target}'. Check the domain and try again.[/bold red]")
 
     # Server took too long to respond
     except TimeoutError:
-        console.print(f"\n[bold red]Error: Connection to '{target}' timed out. Server may be down.[/bold red]")
+        console.print(f"\n[bold red]Error: Connection to '{arguments.target}' timed out. Server may be down.[/bold red]")
 
     # Anything else that goes wrong
     except Exception as error:
