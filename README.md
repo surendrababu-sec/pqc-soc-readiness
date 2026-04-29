@@ -73,6 +73,7 @@ HNDL inverts the usual security calculus: the longer the data's sensitivity life
 
 The scanner is designed in four layers:
 
+```
 ┌──────────────────────────────────────────────────────────┐
 │  INGESTION                                               │
 │  TLS endpoints · PCAP captures · Configs · Cert stores  │
@@ -92,7 +93,7 @@ The scanner is designed in four layers:
 │  REPORTING                                               │
 │  JSON · CLI · SIEM-ready formats                         │
 └──────────────────────────────────────────────────────────┘
-
+```
 
 **Detection targets:** RSA, ECC, DH, DSA — and identification of any already-deployed PQC (ML-KEM, ML-DSA, SLH-DSA).
 
@@ -123,7 +124,7 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 
 ## Research Foundation
 
-The scanner is built on a structured study of the mathematical foundations of post-quantum cryptography. Selected topics covered to date:
+The scanner is built on a structured study of the mathematical foundations of post-quantum cryptography. Topics covered to date:
 
 **Lattice-based cryptography**
 - Polynomial rings of the form Rq = Zq[x]/(x^n + 1)
@@ -143,7 +144,7 @@ The scanner is built on a structured study of the mathematical foundations of po
 
 **Classical cryptographic failure**
 - Mathematical basis for RSA and ECC vulnerability under Shor's algorithm
-- Quantum complexity of factoring and discrete logarithm
+- Quantum complexity of factoring and the discrete logarithm
 
 **NIST PQC standardisation**
 - FIPS 203 (ML-KEM, key encapsulation)
@@ -161,6 +162,7 @@ Full structured notes:
 
 ## Repository Structure
 
+```
 pqc-soc-readiness/
 ├── scanner/               # Python tool — in active development
 │   ├── modules/           # Detection modules
@@ -173,7 +175,7 @@ pqc-soc-readiness/
 ├── requirements.txt       # Python dependencies
 ├── LICENSE                # MIT
 └── README.md              # This file
-
+```
 
 ---
 
@@ -219,7 +221,7 @@ This project is structured as a 10-month independent research programme. Current
 Until the manuscript is published, you may cite this repository:
 
 ```bibtex
-@misc{chilakaluru_pqc_soc_2026,
+@misc{surendrababu_pqc_soc_2026,
   author       = {Chilakaluru, Surendra Babu},
   title        = {PQC-SOC Readiness Scanner: Auditing Enterprise Systems for Quantum-Vulnerable Cryptography Under the HNDL Threat Model},
   year         = {2026},
