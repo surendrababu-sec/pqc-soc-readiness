@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Status: In Development](https://img.shields.io/badge/status-in%20development-orange.svg)]()
+[![Status: In Development](https://img.shields.io/badge/status-in%20development-orange.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 [![NIST PQC](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-darkgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
-[![Threat Model: HNDL](https://img.shields.io/badge/threat%20model-HNDL-red.svg)]()
+[![Threat Model: HNDL](https://img.shields.io/badge/threat%20model-HNDL-red.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 
 An independent research project and open-source Python tool auditing enterprise systems for quantum-vulnerable cryptography under the **Harvest-Now, Decrypt-Later (HNDL)** threat model.
 
@@ -31,11 +31,11 @@ An independent research project and open-source Python tool auditing enterprise 
 
 ## The Problem
 
-Most organisations assume their encryption is secure. It isn't — not against what's coming.
+Most organisations assume their encryption is secure. It isn't - not against what's coming.
 
-The cryptography protecting healthcare records, financial transactions, government communications, and critical infrastructure today relies on mathematical problems — integer factorisation (RSA) and the discrete logarithm (ECC) — that a sufficiently powerful quantum computer will solve using Shor's algorithm.
+The cryptography protecting healthcare records, financial transactions, government communications, and critical infrastructure today relies on mathematical problems - integer factorisation (RSA) and the discrete logarithm (ECC), that a sufficiently powerful quantum computer will solve using Shor's algorithm.
 
-Nation-state adversaries are already harvesting encrypted traffic today, archiving it for the day quantum capability arrives. For data with long-term sensitivity, the compromise is **already happening** — silently — even though the decryption hasn't yet.
+Nation-state adversaries are already harvesting encrypted traffic today, archiving it for the day quantum capability arrives. For data with long-term sensitivity, the compromise is **already happening**, silently - even though the decryption hasn't yet.
 
 NIST finalised the post-quantum replacements in 2024 (FIPS 203, 204, 205). Migration must begin now. But organisations cannot migrate what they cannot see. Most have no inventory of where their quantum-vulnerable cryptography lives.
 
@@ -47,8 +47,8 @@ NIST finalised the post-quantum replacements in 2024 (FIPS 203, 204, 205). Migra
 
 A research project and open-source tool with two inseparable components:
 
-1. **Independent research** into the mathematical foundations of post-quantum cryptography — establishing the technical depth required to reason about cryptographic security in deployed systems.
-2. **The PQC-SOC Readiness Scanner** — a Python tool, in active development, designed to identify quantum-vulnerable cryptography in real systems and recommend NIST-aligned migration paths.
+1. **Independent research** into the mathematical foundations of post-quantum cryptography - establishing the technical depth required to reason about cryptographic security in deployed systems.
+2. **The PQC-SOC Readiness Scanner** - a Python tool, in active development, designed to identify quantum-vulnerable cryptography in real systems and recommend NIST-aligned migration paths.
 
 The research drives the tool. The tool keeps the research grounded.
 
@@ -65,7 +65,7 @@ The research drives the tool. The tool keeps the research grounded.
 | Affects **long-lived data** | Patient records, financial transactions, IP, classified material |
 | Mitigation requires **migration**, not just monitoring | Defenders cannot retroactively unencrypt what's already harvested |
 
-HNDL inverts the usual security calculus: the longer the data's sensitivity lifetime, the more urgent the migration — even if Q-Day itself is years away.
+HNDL inverts the usual security calculus: the longer the data's sensitivity lifetime, the more urgent the migration - even if Q-Day itself is years away.
 
 ---
 
@@ -118,7 +118,7 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 | PCAP-based handshake inspection | ⏳ Planned |
 | Manuscript for arXiv | 🟡 In preparation |
 
-✅ = complete · 🟡 = in progress · ⏳ = planned
+✅ - complete · 🟡 - in progress · ⏳ - planned
 
 ---
 
@@ -181,25 +181,25 @@ pqc-soc-readiness/
 
 ## Roadmap
 
-This project is structured as a 10-month independent research programme. Current phase: **Month 3 — Foundation Phase**.
+This project is structured as a 10-month independent research programme. Current phase: **Month 3 - Foundation Phase**.
 
-**Phase 1 — Foundation (Months 1–3)** ✅ *Complete*
+**Phase 1 - Foundation (Months 1-3)** ✅ *Complete*
 - Mathematical foundations of PQC schemes
 - HNDL threat model formalisation
 - Scanner architecture and design
 
-**Phase 2 — Detection Layer (Months 4–6)** 🟡 *In progress*
+**Phase 2 - Detection Layer (Months 4-6)** 🟡 *In progress*
 - TLS endpoint probing & certificate analysis
 - Multiple target scanning
 - NIST migration recommendations
 - Initial CLI interface
 
-**Phase 3 — Risk Engine (Months 6–8)** ⏳ *Planned*
+**Phase 3 - Risk Engine (Months 6-8)** ⏳ *Planned*
 - HNDL severity scoring
 - PCAP-based network capture analysis
 - SIEM-ready output formats
 
-**Phase 4 — Manuscript & Release (Months 8–10)** ⏳ *Planned*
+**Phase 4 - Manuscript & Release (Months 8-10)** ⏳ *Planned*
 - arXiv preprint preparation
 - v0.1 release of the scanner
 - Documentation pass
@@ -242,9 +242,9 @@ This project is released under the [MIT License](LICENSE).
 
 **Surendra Babu Chilakaluru**
 
-MSc Information Security & Digital Forensics — Distinction, University of East London. Independent researcher in post-quantum cryptography and security operations. Based in London, UK.
+MSc Information Security & Digital Forensics - Distinction, University of East London. Independent researcher in post-quantum cryptography and security operations. Based in London, UK.
 
-Connect: [LinkedIn](https://www.linkedin.com/in/surendra-babu-chilakaluru/) · [GitHub](https://github.com/surendrababu-sec)
+Connect: [LinkedIn](https://www.linkedin.com/in/surendra-babu-chilakaluru-4233a01b8/) · [GitHub](https://github.com/surendrababu-sec)
 
 ---
 
