@@ -19,8 +19,11 @@ console = Console()
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
 def get_certificate(target):
 
-    # Set up secure connection settings
+    # Set up secure connection settings - turning off certificate verification on purpose.
+    # This is a scanner, not a browser. It needs to inspect even the broken, expired, and self-signed certificates - those are often the most interesting ones from a security perspective.
     tls_settings = ssl.create_default_context()
+    tls_settings.check_hostname = False
+    tls_settings.verify_mode = ssl.CERT_NONE
 
     # Open a basic network connection to the target on port 443 (HTTPS)
     # If the server doesn't respond in 10 sec, give up
@@ -55,10 +58,11 @@ def analyse_certificate(certificate):
         findings["vulnerable"] = True
 
     elif isinstance(key, ec.EllipticCurvePublicKey):
-        findings["algorithm"] = "ECC"
+        findings["algorithm"] = f"ECC ({key.curve.name})"
         findings["key_size"] = key.key_size
         findings["vulnerable"] = True
 
+    # DSA and DH rarely appear in TLS certificates, included here for completeness
     elif isinstance(key, dsa.DSAPublicKey):
         findings["algorithm"] = "DSA"
         findings["key_size"] = key.key_size
@@ -99,7 +103,7 @@ def display_results(target, findings):
     results_table.add_column("Expires")
 
     # Decide the risk label and row colour based on what we found
-    if findings["vulnerable"] == True:
+    if findings["vulnerable"]:
         risk_label = "YES - Quantum Vulnerable"
         row_color = "red"
     elif findings["vulnerable"] is None:
@@ -110,13 +114,21 @@ def display_results(target, findings):
         row_color = "green"
     
     # Add one row with everything we found about the target.
-    results_table.add_row(target, findings["algorithm"], str(findings["key_size"])+" bits", risk_label, findings["issuer"], findings["expires"], style=row_color) 
+    results_table.add_row(
+        target,
+        findings["algorithm"],
+        f"{findings['key_size']} bits" if findings['key_size'] else "N/A",
+        risk_label,
+        findings["issuer"],
+        findings["expires"],
+        style=row_color
+    ) 
 
     # Print the finished table to the terminal
     console.print(results_table)
 
 # This is the main runner
-# Takes the target from the user, runs the scab, and shows the results.
+# Takes the target from the user, runs the scan, and shows the results.
 if __name__ == "__main__":
 
     # Ask the user which domain they want to scan.
@@ -132,7 +144,7 @@ if __name__ == "__main__":
         console.print(f"[bold cyan]Analysing certificate...[/bold cyan]")
         findings = analyse_certificate(certificate)
 
-        #Step 3: Display everything in a clean table.
+        # Step 3: Display everything in a clean table.
         display_results(target, findings)
 
     # Target domain  doesn't exist, or can't be found.
