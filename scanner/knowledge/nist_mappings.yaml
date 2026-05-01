@@ -1,0 +1,32 @@
+# NIST PQC Migration Mappings
+# This file maps quantum-vulnerable algorithms to their post-quantum replacements.
+# Based on NIST FIPS 203, 204, 205 and transition guidance SP 800-208.
+
+RSA_signature:
+  standard: "FIPS 204 (ML-DSA)"
+  migration: "Replace RSA signature with ML-DSA-65. For conservative deployments where hash-based signatures are preferred, SLH-DSA (FIPS 205) is an alternative."
+
+RSA_key_exchange:
+  standard: "FIPS 203 (ML-KEM)"
+  migration: "Replace RSA key transport with ML-KEM-768. Run in hybrid mode alongside RSA during the transition period per NIST SP 800-208."
+
+RSA_encryption:
+  standard: "FIPS 203 (ML-KEM)"
+  migration: "Replace RSA-OAEP encryption with ML-KEM-768 combined with symmetric encryption."
+
+ECC_signature:
+  standard: "FIPS 204 (ML-DSA)"
+  migration: "Replace ECDSA with ML-DSA-65. This matches the security level of P-256 and is the direct post-quantum equivalent."
+
+ECC_key_exchange:
+  standard: "FIPS 203 (ML-KEM)"
+  migration: "Replace ECDH with hybrid ML-KEM-768 alongside X25519 during the transition period per NIST SP 800-208."
+
+DH_key_exchange:
+  standard: "FIPS 203 (ML-KEM)"
+  migration: "Replace Diffie-Hellman key exchange with ML-KEM-768."
+
+DSA_signature:
+  standard: "FIPS 204 (ML-DSA)"
+  migration: "Replace DSA with ML-DSA-65. DSA is already deprecated in most modern systems."
+  

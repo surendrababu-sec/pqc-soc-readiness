@@ -1,0 +1,17 @@
+# HNDL Exposure Scoring Rubric
+# This file controls how the scanner scores quantum vulnerability.
+# Weights must add up to 1.0 - think of them as percentages.
+# Max values are the highest score each factor can receive.
+# Updating this file changes the scoring without touching any Python code.
+
+weights:
+  algorithm_risk: 0.4
+  data_sensitivity: 0.2
+  data_lifetime: 0.2
+  exposure_surface: 0.2
+
+max_values:
+  algorithm_risk: 3
+  data_sensitivity: 3
+  data_lifetime: 3
+  exposure_surface: 3
