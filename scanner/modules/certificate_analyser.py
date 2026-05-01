@@ -8,6 +8,7 @@ import socket
 import os
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh
+from modules.risk_engine import evaluate_risk
 
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
 def get_certificate(target, port):
@@ -114,8 +115,12 @@ def scan_from_file(file_path, port, display_function, console):
             console.print("Analysing certificate...", style="bold cyan")
             findings = analyse_certificate(certificate)
 
+            # Run the risk engine to score and get NIST recommendations
+            console.print("Evaluating risk...", style="bold cyan")
+            risk = evaluate_risk(findings["algorithm"], findings["key_size"])
+
             # Display the results for this domain
-            display_function(domain, findings)
+            display_function(domain, findings, risk)
 
             # If it's vulnerable, add it to the count
             if findings["vulnerable"]:

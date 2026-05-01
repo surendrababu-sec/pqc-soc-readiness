@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Pull in the detection functions from the certificate analyser module
 from modules.certificate_analyser import get_certificate, analyse_certificate, scan_from_file
+from modules.risk_engine import evaluate_risk
 
 # Single console instance used throughout for all formatted output.
 console = Console()
@@ -19,7 +19,7 @@ console = Console()
 
 
 # Takes the findings from above and displays them in a clean color coded table.
-def display_results(target, findings):
+def display_results(target, findings, risk):
 
     # Build the header banner so we know which target was just scanned.
     console.print(Panel(f"PQC-SOC Readiness Scanner - Target: {target}", style="bold blue"))
@@ -34,6 +34,9 @@ def display_results(target, findings):
     results_table.add_column("Vulnerable")
     results_table.add_column("Issuer")
     results_table.add_column("Expires")
+    results_table.add_column("HNDL Score")
+    results_table.add_column("Severity")
+    results_table.add_column("NIST Standard")
 
     # Decide the risk label and row colour based on what was found
     if findings["vulnerable"]:
@@ -54,11 +57,20 @@ def display_results(target, findings):
         risk_label,
         findings["issuer"],
         findings["expires"],
+        str(risk.score),
+        risk.severity,
+        risk.nist_standard,
         style=row_color
     ) 
 
     # Print the finished table to the terminal
     console.print(results_table)
+
+    # Print the migration advice
+    console.print(Panel(risk.migration_advice, title="Migration Advice", style="yellow"))
+
+    # Print the rationale
+    console.print(Panel(risk.rationale, title="Rationale", style="cyan"))
 
 # This is the main runner
 # Takes the target and optional port directly from the command line, runs the scan, and shows the results.
@@ -109,8 +121,12 @@ if __name__ == "__main__":
             console.print("[bold cyan]Analysing certificate...[/bold cyan]")
             findings = analyse_certificate(certificate)
 
-            # Step 3: Display everything in a clean table.
-            display_results(arguments.target, findings)
+            # Step 3: Run the risk engine to score and get NIST recommendations.
+            console.print("[bold cyan]Evaluating risk...[/bold cyan]")
+            risk = evaluate_risk(findings["algorithm"], findings["key_size"])
+
+            # Step 4: Display everything in a clean table.
+            display_results(arguments.target, findings, risk)
 
         # Target domain  doesn't exist, or can't be found.
         except socket.gaierror:
