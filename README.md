@@ -202,6 +202,13 @@ source venv/bin/activate     # Mac/Linux
 pip install -r requirements.txt
 ```
 
+### Keeping up to date
+
+```bash
+git pull
+pip install -r requirements.txt
+```
+
 ### Scan a single target
 
 ```bash
