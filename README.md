@@ -117,12 +117,12 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 | Multiple target scanning from file | ✅ Built and working |
 | HNDL exposure scoring engine | ✅ Built - weighted 0–100 scoring with configurable rubric |
 | NIST migration recommendation engine | ✅ Built - FIPS 203/204/205 mapped recommendations |
-| Configurable sensitivity/lifetime/exposure flags | ⏳ Planned |
-| JSON output for SIEM integration | ⏳ Planned |
-| PCAP-based handshake inspection | ⏳ Planned |
+| Configurable sensitivity/lifetime/exposure flags | ✅ Built and working |
+| JSON output for SIEM integration | ✅ Built - SIEM-ready JSON with full metadata |
+| PCAP-based network capture analysis | ⏳ Planned |
 | Manuscript for arXiv | 🟡 In preparation |
 
-✅ - complete · 🟡 - in progress · ⏳ - planned
+✅ = complete · 🟡 = in progress · ⏳ = planned
 
 ---
 
@@ -131,24 +131,24 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 The scanner is built on a structured study of the mathematical foundations of post-quantum cryptography. Topics covered to date:
 
 **Lattice-based cryptography**
-- Polynomial rings of the form Rq = Zq[x]/(x^n + 1).
-- Module Learning With Errors (MLWE) and the decisional variant (D-MLWE).
-- Why no known quantum algorithm efficiently solves these problems.
+- Polynomial rings of the form Rq = Zq[x]/(x^n + 1)
+- Module Learning With Errors (MLWE) and the decisional variant (D-MLWE)
+- Why no known quantum algorithm efficiently solves these problems
 
 **CRYSTALS-Kyber (ML-KEM, FIPS 203)**
-- Full key generation, encapsulation, and decapsulation construction.
-- IND-CPA → IND-CCA2 via the Fujisaki-Okamoto transform.
-- Parameter sets (ML-KEM-512/768/1024) and their overhead implications.
+- Full key generation, encapsulation, and decapsulation construction
+- IND-CPA → IND-CCA2 via the Fujisaki-Okamoto transform
+- Parameter sets (ML-KEM-512/768/1024) and their overhead implications
 
 **CRYSTALS-Dilithium (ML-DSA, FIPS 204)**
-- Schnorr signature scheme foundations and lattice adaptation.
-- Rejection sampling, HighBits/LowBits decomposition, hint bits.
-- Full ML-DSA scheme construction: key generation, signing, verification, and correctness argument.
-- Parameter sets (ML-DSA-44/65/87) and key/signature size implications.
+- Schnorr signature scheme foundations and lattice adaptation
+- Rejection sampling, HighBits/LowBits decomposition, hint bits
+- Full ML-DSA scheme construction: key generation, signing, verification, and correctness argument
+- Parameter sets (ML-DSA-44/65/87) and key/signature size implications
 
 **Classical cryptographic failure**
-- Mathematical basis for RSA and ECC vulnerability under Shor's algorithm.
-- Quantum complexity of factoring and the discrete logarithm.
+- Mathematical basis for RSA and ECC vulnerability under Shor's algorithm
+- Quantum complexity of factoring and the discrete logarithm
 
 **NIST PQC standardisation**
 - FIPS 203 (ML-KEM, key encapsulation)
@@ -157,10 +157,10 @@ The scanner is built on a structured study of the mathematical foundations of po
 - SP 800-208 (transition guidance and hybrid modes)
 
 Full structured notes:
-- [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) - HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation.
-- [`MONTH-2-NOTES.md`](MONTH-2-NOTES.md) - CRYSTALS-Kyber mathematical structure, ML-KEM construction.
-- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) - CRYSTALS-Dilithium mathematical structure, ML-DSA construction (NTT section pending).
-- [`RESEARCH-NOTES.md`](RESEARCH-NOTES.md) - Index across all research.
+- [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) - HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation
+- [`MONTH-2-NOTES.md`](MONTH-2-NOTES.md) - CRYSTALS-Kyber mathematical structure, ML-KEM construction
+- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) - CRYSTALS-Dilithium mathematical structure, ML-DSA construction (NTT section pending)
+- [`RESEARCH-NOTES.md`](RESEARCH-NOTES.md) - Index across all research
 
 ---
 
@@ -219,7 +219,7 @@ python scanner/main.py example.com --port 8443
 python scanner/main.py --targets targets.txt
 ```
 
-### Show all options
+### Show all available options
 
 ```bash
 python scanner/main.py --help
@@ -229,26 +229,26 @@ python scanner/main.py --help
 
 ## Roadmap
 
-This project is structured as a 10-month independent research programme. Current phase: **Month 4 - Detection & Risk Engine (Phase 2)**.
+This project is structured as a 10-month independent research programme. Current phase: **Month 5 - Reporting & Network Analysis (Phase 3)**.
 
 **Phase 1 - Foundation (Months 1-3)** ✅ *Complete*
 - Mathematical foundations of PQC schemes
 - HNDL threat model formalisation
 - Scanner architecture and design
 
-**Phase 2 - Detection & Risk Engine (Months 4-6)** 🟡 *In progress*
+**Phase 2 - Detection & Risk Engine (Months 4-6)** ✅ *Complete*
 - TLS endpoint probing & certificate analysis ✅
 - Multiple target scanning from file ✅
 - HNDL exposure scoring engine ✅
 - NIST migration recommendation engine ✅
 - Initial CLI interface ✅
-- Configurable sensitivity/lifetime/exposure flags ⏳
-- JSON output for SIEM integration ⏳
+- Configurable sensitivity/lifetime/exposure flags ✅
+- JSON output for SIEM integration ✅
 
-**Phase 3 - Risk Engine (Months 6-8)** ⏳ *Planned*
+**Phase 3 - Reporting & Network Analysis (Months 6-8)** 🟡 *In progress*
 - PCAP-based network capture analysis
 - SIEM-ready CEF output format
-- Full JSON report generation
+- JSON report enhancements (failed scan details, priority ordering, timing)
 - Documentation pass
 
 **Phase 4 - Manuscript & Release (Months 8-10)** ⏳ *Planned*
