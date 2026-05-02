@@ -79,6 +79,9 @@ def display_results(target, findings, risk):
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
 def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_count=0):
 
+    # Always use the .json extension for clarity, even if the user forgets to add it.
+    filename = Path(filename).stem + ".json" 
+
     # Output path
     output_folder = Path(__file__).parent/"output"
     output_folder.mkdir(exist_ok=True) # Create the outputfoler if it doesn't exist.
