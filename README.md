@@ -175,7 +175,8 @@ pqc-soc-readiness/
 │   ├── knowledge/
 │   │   ├── hndl_rubric.yaml          # Scoring weights and rubric
 │   │   └── nist_mappings.yaml        # NIST PQC migration mappings
-│   ├── output/                       # Scan results
+│   ├── output/                       # Scan results (auto-created, gitignored)
+│   ├── targets.txt                   # Example target domains - edit with your own
 │   └── main.py                       # Entry point and CLI interface
 ├── MONTH-1-NOTES.md                  # Phase 1: threat landscape & foundations
 ├── MONTH-2-NOTES.md                  # Phase 2: CRYSTALS-Kyber mathematics
@@ -216,8 +217,18 @@ python scanner/main.py example.com --port 8443
 ### Scan multiple targets from a file
 
 ```bash
-python scanner/main.py --targets targets.txt
+python scanner/main.py --targets scanner/targets.txt
 ```
+
+> `targets.txt` contains example domains. Edit it with your own targets - one domain per line.
+
+### Save results as a JSON report
+
+```bash
+python scanner/main.py google.com --output report.json
+```
+
+> Report saves automatically to `scanner/output/report.json`
 
 ### Show all available options
 
