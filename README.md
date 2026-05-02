@@ -21,6 +21,7 @@ An independent research project and open-source Python tool auditing enterprise 
 - [Current State](#current-state)
 - [Research Foundation](#research-foundation)
 - [Repository Structure](#repository-structure)
+- [Usage](#usage)
 - [Roadmap](#roadmap)
 - [Manuscript](#manuscript)
 - [How to Cite](#how-to-cite)
@@ -76,7 +77,7 @@ The scanner is designed in four layers:
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  INGESTION                                               │
-│  TLS endpoints · PCAP captures · Configs · Cert stores  │
+│  TLS endpoints · PCAP captures · Configs · Cert stores   │
 └────────────────────────┬─────────────────────────────────┘
                          ▼
 ┌──────────────────────────────────────────────────────────┐
@@ -112,9 +113,12 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 | Mathematical foundations (CRYSTALS-Dilithium) | ✅ Documented in research notes |
 | NIST FIPS 203/204/205 study | ✅ Documented |
 | Scanner architecture & design | ✅ Defined |
-| Detection layer (TLS, certificate parsing) | ✅ Core detection built, expanding |
-| HNDL severity scoring engine | ⏳ Planned |
-| NIST migration recommendation engine | ⏳ Planned |
+| TLS certificate detection (RSA, ECC, DSA, DH) | ✅ Built and working |
+| Multiple target scanning from file | ✅ Built and working |
+| HNDL exposure scoring engine | ✅ Built - weighted 0–100 scoring with configurable rubric |
+| NIST migration recommendation engine | ✅ Built - FIPS 203/204/205 mapped recommendations |
+| Configurable sensitivity/lifetime/exposure flags | ⏳ Planned |
+| JSON output for SIEM integration | ⏳ Planned |
 | PCAP-based handshake inspection | ⏳ Planned |
 | Manuscript for arXiv | 🟡 In preparation |
 
@@ -164,45 +168,93 @@ Full structured notes:
 
 ```
 pqc-soc-readiness/
-├── scanner/               # Python tool — in active development
-│   ├── modules/           # Detection modules
-│   ├── output/            # Scan results
-│   └── main.py            # Entry point
-├── MONTH-1-NOTES.md       # Phase 1: threat landscape & foundations
-├── MONTH-2-NOTES.md       # Phase 2: CRYSTALS-Kyber mathematics
-├── MONTH-3-NOTES.md       # Phase 3: CRYSTALS-Dilithium mathematics
-├── RESEARCH-NOTES.md      # Index of monthly notes
-├── requirements.txt       # Python dependencies
-├── LICENSE                # MIT
-└── README.md              # This file
+├── scanner/                          # Python tool - in active development
+│   ├── modules/
+│   │   ├── certificate_analyser.py   # TLS certificate detection engine
+│   │   └── risk_engine.py            # HNDL scoring and NIST recommendations
+│   ├── knowledge/
+│   │   ├── hndl_rubric.yaml          # Scoring weights and rubric
+│   │   └── nist_mappings.yaml        # NIST PQC migration mappings
+│   ├── output/                       # Scan results
+│   └── main.py                       # Entry point and CLI interface
+├── MONTH-1-NOTES.md                  # Phase 1: threat landscape & foundations
+├── MONTH-2-NOTES.md                  # Phase 2: CRYSTALS-Kyber mathematics
+├── MONTH-3-NOTES.md                  # Phase 3: CRYSTALS-Dilithium mathematics
+├── RESEARCH-NOTES.md                 # Index of monthly notes
+├── requirements.txt                  # Python dependencies
+├── LICENSE                           # MIT
+└── README.md                         # This file
+```
+
+---
+
+## Usage
+
+### Installation
+
+```bash
+git clone https://github.com/surendrababu-sec/pqc-soc-readiness.git
+cd pqc-soc-readiness
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
+pip install -r requirements.txt
+```
+
+### Scan a single target
+
+```bash
+python scanner/main.py google.com
+```
+
+### Scan on a non-standard port
+
+```bash
+python scanner/main.py example.com --port 8443
+```
+
+### Scan multiple targets from a file
+
+```bash
+python scanner/main.py --targets targets.txt
+```
+
+### Show all options
+
+```bash
+python scanner/main.py --help
 ```
 
 ---
 
 ## Roadmap
 
-This project is structured as a 10-month independent research programme. Current phase: **Month 4 - Detection Layer (Phase 2)**.
+This project is structured as a 10-month independent research programme. Current phase: **Month 4 - Detection & Risk Engine (Phase 2)**.
 
 **Phase 1 - Foundation (Months 1-3)** ✅ *Complete*
 - Mathematical foundations of PQC schemes
 - HNDL threat model formalisation
 - Scanner architecture and design
 
-**Phase 2 - Detection Layer (Months 4-6)** 🟡 *In progress*
-- TLS endpoint probing & certificate analysis
-- Multiple target scanning
-- Initial CLI interface
+**Phase 2 - Detection & Risk Engine (Months 4-6)** 🟡 *In progress*
+- TLS endpoint probing & certificate analysis ✅
+- Multiple target scanning from file ✅
+- HNDL exposure scoring engine ✅
+- NIST migration recommendation engine ✅
+- Initial CLI interface ✅
+- Configurable sensitivity/lifetime/exposure flags ⏳
+- JSON output for SIEM integration ⏳
 
 **Phase 3 - Risk Engine (Months 6-8)** ⏳ *Planned*
-- HNDL severity scoring
-- NIST migration recommendation engine
 - PCAP-based network capture analysis
-- SIEM-ready output formats
+- SIEM-ready CEF output format
+- Full JSON report generation
+- Documentation pass
 
 **Phase 4 - Manuscript & Release (Months 8-10)** ⏳ *Planned*
 - arXiv preprint preparation
 - v0.1 release of the scanner
-- Documentation pass
+- Final documentation and community release
 
 ---
 
