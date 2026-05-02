@@ -6,6 +6,9 @@
 
 import socket
 import argparse
+import json
+from datetime import datetime
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -72,6 +75,45 @@ def display_results(target, findings, risk):
     # Print the rationale
     console.print(Panel(risk.rationale, title="Rationale", style="cyan"))
 
+# Takes everything the scanner found and writes it into a structured JSON file.
+# SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
+def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_count=0):
+
+    # Output path
+    output_folder = Path(__file__).parent/"output"
+    output_folder.mkdir(exist_ok=True) # Create the outputfoler if it doesn't exist.
+    full_output_path = output_folder/filename
+
+    # Build the metadata section
+    scan_metadata = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "scanner_version": "0.1",
+        "threat_model": "HNDL - Harvest Now, Decrypt Later",
+        "context_settings": {
+            "data_sensitivity": arguments.sensitivity,
+            "data_lifetime": arguments.lifetime,
+            "exposure_surface": arguments.exposure
+        },
+        "total_in_file": total_in_file if total_in_file else len(all_findings),
+        "successfully_scanned": len(all_findings),
+        "vulnerable_count": sum(1 for finding in all_findings if finding["vulnerable"]),
+        "failed_count": failed_count
+    }
+
+    # Bundle the metadata and findings together into one complete report
+    scan_report = {
+        "scan_metadata": scan_metadata,
+        "findings": all_findings
+    }
+
+    # Write the report to the specified file
+    with open(full_output_path, "w") as output_file:
+        json.dump(scan_report, output_file, indent=2)
+
+    console.print(f"\n[bold green]Report saved to '{full_output_path}'[/bold green]")
+                                             
+
+
 # This is the main runner
 # Takes the target and optional port directly from the command line, runs the scan, and shows the results.
 if __name__ == "__main__":
@@ -113,12 +155,16 @@ if __name__ == "__main__":
     # How exposed is this endpoint to the outside world?
     parser.add_argument("--exposure", type=int, default=2, choices=[1,2,3], metavar="level", help="Exposure surface - 1=internal only, 2=partner-facing, 3=public internet (default: 2)")
 
+    # Where to save the JSON report -optional, only saves if this flag is provided
+    parser.add_argument("--output", metavar="file", help="Save the scan results to a JSON file for SIEM integration (e.g. report.json)")
 
     # Read what the user typed in the command line and store it
     arguments = parser.parse_args()
 
     # --- Single target mode ---
     if arguments.target:
+
+        all_findings = []  
 
         # Try to run the full scan - if anything goes wrong, the except blocks below handle it.
         try:
@@ -138,6 +184,21 @@ if __name__ == "__main__":
             # Step 4: Display everything in a clean table.
             display_results(arguments.target, findings, risk)
 
+            # Step 5: Collect the finding for the JSON report.
+            all_findings.append({
+                "target": arguments.target,
+                "algorithm": findings["algorithm"],
+                "key_size": findings["key_size"],
+                "vulnerable": findings["vulnerable"],
+                "issuer": findings["issuer"],
+                "expires": findings["expires"],
+                "hndl_score": risk.score,
+                "severity": risk.severity,
+                "nist_standard": risk.nist_standard,
+                "migration_advice": risk.migration_advice,
+                "rationale": risk.rationale
+            })
+
         # Target domain  doesn't exist, or can't be found.
         except socket.gaierror:
             console.print(f"\n[bold red]Error: Could not find '{arguments.target}'. Check the domain and try again.[/bold red]")
@@ -150,7 +211,16 @@ if __name__ == "__main__":
         except Exception as error:
             console.print(f"\n[bold red]Something went wrong: {error}[/bold red]")
 
+        # Save the JSON report if the --output was specified.
+        if arguments.output and all_findings:
+            save_json_report(arguments.output, all_findings, arguments)
+
     # --- File of targets mode ---
     elif arguments.targets:
-        scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
+        all_findings, total_in_file, failed_count = scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
+
+        if arguments.output and all_findings:
+            save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_count=failed_count)
+
+
         

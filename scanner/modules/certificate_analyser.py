@@ -85,7 +85,7 @@ def analyse_certificate(certificate):
 # One domain per line in the file - that's all it needs.
 # At the end it prints a summary of how many were vulnerable.
 
-def scan_from_file(file_path, port, display_function, console):
+def scan_from_file(file_path, port, display_function, console, data_sensitivity=2, data_lifetime=2, exposure_surface=2):
 
     # Check the file actually exists before trying to open it
     if not os.path.exists(file_path):
@@ -104,6 +104,8 @@ def scan_from_file(file_path, port, display_function, console):
     vulnerable_count = 0
     failed_count = 0
 
+    all_findings = [] # Empty list, collects every finding as each target is scanned.
+
     console.print(f"\n[bold cyan]Starting scan of {total_count} targets from '{file_path}'...[/bold cyan]")
 
     # Go through each domain one by one and scan it
@@ -121,6 +123,21 @@ def scan_from_file(file_path, port, display_function, console):
 
             # Display the results for this domain
             display_function(domain, findings, risk)
+
+            # Collect this finding for the JSON report
+            all_findings.append({
+                "target": domain,
+                "algorithm": findings["algorithm"],
+                "key_size": findings["key_size"],
+                "vulnerable": findings["vulnerable"],
+                "issuer": findings["issuer"],
+                "expires": findings["expires"],
+                "hndl_score": risk.score,
+                "severity": risk.severity,
+                "nist_standard": risk.nist_standard,
+                "migration_advice": risk.migration_advice,
+                "rationale": risk.rationale
+            })
 
             # If it's vulnerable, add it to the count
             if findings["vulnerable"]:
@@ -148,3 +165,6 @@ def scan_from_file(file_path, port, display_function, console):
     console.print(f"[bold red]Vulnerable    : {vulnerable_count}[/bold red]")
     console.print(f"[bold green]Not vulnerable: {total_count - failed_count - vulnerable_count}[/bold green]")
     console.print(f"[bold yellow]Failed to scan: {failed_count}[/bold yellow]")
+
+    # Return all findings & counts so main.py can save them to a JSON report if needed.
+    return all_findings, total_count, failed_count
