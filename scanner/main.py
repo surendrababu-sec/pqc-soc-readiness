@@ -80,7 +80,10 @@ def display_results(target, findings, risk):
 def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_count=0):
 
     # Always use the .json extension for clarity, even if the user forgets to add it.
-    filename = Path(filename).stem + ".json" 
+    # No two scan reports will overwrite each other 
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{Path(filename).stem}_{timestamp}.json"
+
 
     # Output path
     output_folder = Path(__file__).parent/"output"
