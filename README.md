@@ -8,7 +8,7 @@
 [![NIST PQC](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-darkgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
 [![Threat Model: HNDL](https://img.shields.io/badge/threat%20model-HNDL-red.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 
-An independent research project and open-source Python tool auditing enterprise systems for quantum-vulnerable cryptography under the **Harvest-Now, Decrypt-Later (HNDL)** threat model.
+An independent research project and open-source Python tool auditing organisations' public-facing TLS endpoints for quantum-vulnerable cryptography under the **Harvest-Now, Decrypt-Later (HNDL)** threat model.
 
 ---
 
@@ -119,7 +119,7 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 | NIST migration recommendation engine | ✅ Built - FIPS 203/204/205 mapped recommendations |
 | Configurable sensitivity/lifetime/exposure flags | ✅ Built and working |
 | JSON output for SIEM integration | ✅ Built - SIEM-ready JSON with full metadata |
-| PCAP-based network capture analysis | ⏳ Planned |
+| PCAP-based network capture analysis | 🟡 In progress |
 | Manuscript for arXiv | 🟡 In preparation |
 
 ✅ = complete · 🟡 = in progress · ⏳ = planned
@@ -154,7 +154,7 @@ The scanner is built on a structured study of the mathematical foundations of po
 - FIPS 203 (ML-KEM, key encapsulation)
 - FIPS 204 (ML-DSA, digital signatures)
 - FIPS 205 (SLH-DSA, hash-based signatures)
-- SP 800-208 (transition guidance and hybrid modes)
+- FIPS 203/204/205 parameter sets and hybrid deployment considerations during transition
 
 Full structured notes:
 - [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) - HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation
@@ -278,7 +278,7 @@ This project is structured as a 10-month independent research programme. Current
 
 ## Manuscript
 
-> **PQC-SOC Readiness: Auditing Enterprise Systems for Quantum-Vulnerable Cryptography Under the HNDL Threat Model**
+> **PQC-SOC Readiness: Auditing Organisations' Public-Facing TLS Endpoints for Quantum-Vulnerable Cryptography Under the HNDL Threat Model**
 >
 > Surendra Babu Chilakaluru
 >
@@ -293,7 +293,7 @@ Until the manuscript is published, you may cite this repository:
 ```bibtex
 @misc{surendrababu_pqc_soc_2026,
   author       = {Chilakaluru, Surendra Babu},
-  title        = {PQC-SOC Readiness Scanner: Auditing Enterprise Systems for Quantum-Vulnerable Cryptography Under the HNDL Threat Model},
+  title        = {PQC-SOC Readiness Scanner: Auditing Organisations' Public-Facing TLS Endpoints for Quantum-Vulnerable                       Cryptography Under the HNDL Threat Model},
   year         = {2026},
   howpublished = {\url{https://github.com/surendrababu-sec/pqc-soc-readiness}},
   note         = {Open-source research project, in development}
