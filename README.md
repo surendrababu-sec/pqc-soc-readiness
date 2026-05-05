@@ -12,8 +12,15 @@ An independent research project and open-source Python tool auditing organisatio
 
 ---
 
+## Demo
+
+![PQC-SOC Scanner Demo](assets/demo.gif)
+
+---
+
 ## Table of Contents
 
+- [Demo](#demo)
 - [The Problem](#the-problem)
 - [What This Project Is](#what-this-project-is)
 - [Threat Model: HNDL](#threat-model-hndl)
@@ -49,7 +56,7 @@ NIST finalised the post-quantum replacements in 2024 (FIPS 203, 204, 205). Migra
 A research project and open-source tool with two inseparable components:
 
 1. **Independent research** into the mathematical foundations of post-quantum cryptography - establishing the technical depth required to reason about cryptographic security in deployed systems.
-2. **The PQC-SOC Readiness Scanner** - a Python tool, in active development, designed to identify quantum-vulnerable cryptography in real systems and recommend NIST-aligned migration paths.
+2. **The PQC-SOC Readiness Scanner** - a Python tool, in active development, designed to identify quantum-vulnerable cryptography in organisations' public-facing TLS endpoints, and recommend NIST-aligned migration paths.
 
 The research drives the tool. The tool keeps the research grounded.
 
@@ -293,7 +300,7 @@ Until the manuscript is published, you may cite this repository:
 ```bibtex
 @misc{surendrababu_pqc_soc_2026,
   author       = {Chilakaluru, Surendra Babu},
-  title        = {PQC-SOC Readiness Scanner: Auditing Organisations' Public-Facing TLS Endpoints for Quantum-Vulnerable                       Cryptography Under the HNDL Threat Model},
+  title        = {PQC-SOC Readiness Scanner: Auditing Organisations' Public-Facing TLS Endpoints for Quantum-Vulnerable Cryptography Under the HNDL Threat Model},
   year         = {2026},
   howpublished = {\url{https://github.com/surendrababu-sec/pqc-soc-readiness}},
   note         = {Open-source research project, in development}
