@@ -32,6 +32,7 @@ An independent research project and open-source Python tool auditing organisatio
 - [Roadmap](#roadmap)
 - [Manuscript](#manuscript)
 - [How to Cite](#how-to-cite)
+- [Contributing](#contributing)
 - [License](#license)
 - [Author](#author)
 
@@ -166,7 +167,7 @@ The scanner is built on a structured study of the mathematical foundations of po
 Full structured notes:
 - [`MONTH-1-NOTES.md`](MONTH-1-NOTES.md) - HNDL threat landscape, RSA/ECC quantum failure, NIST standardisation
 - [`MONTH-2-NOTES.md`](MONTH-2-NOTES.md) - CRYSTALS-Kyber mathematical structure, ML-KEM construction
-- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) - CRYSTALS-Dilithium mathematical structure, ML-DSA construction (NTT section pending)
+- [`MONTH-3-NOTES.md`](MONTH-3-NOTES.md) - CRYSTALS-Dilithium mathematical structure, ML-DSA construction
 - [`RESEARCH-NOTES.md`](RESEARCH-NOTES.md) - Index across all research
 
 ---
@@ -185,9 +186,12 @@ pqc-soc-readiness/
 │   ├── output/                       # Scan results (auto-created, gitignored)
 │   ├── targets.txt                   # Example target domains - edit with your own
 │   └── main.py                       # Entry point and CLI interface
-├── MONTH-1-NOTES.md                  # Phase 1: threat landscape & foundations
-├── MONTH-2-NOTES.md                  # Phase 2: CRYSTALS-Kyber mathematics
-├── MONTH-3-NOTES.md                  # Phase 3: CRYSTALS-Dilithium mathematics
+├── assets/                           # Screenshots and demo media
+│   ├── demo.gif                      # Tool demo recording
+│   └── help-screenshot.png           # CLI --help output
+├── MONTH-1-NOTES.md                  # Month 1: threat landscape & foundations
+├── MONTH-2-NOTES.md                  # Month 2: CRYSTALS-Kyber mathematics
+├── MONTH-3-NOTES.md                  # Month 3: CRYSTALS-Dilithium mathematics
 ├── RESEARCH-NOTES.md                 # Index of monthly notes
 ├── requirements.txt                  # Python dependencies
 ├── LICENSE                           # MIT
@@ -250,11 +254,13 @@ python scanner/main.py google.com --output report.json
 python scanner/main.py --help
 ```
 
+![CLI Help](assets/help_screenshot.png)
+
 ---
 
 ## Roadmap
 
-This project is structured as a 10-month independent research programme. Current phase: **Month 5 - Reporting & Network Analysis (Phase 3)**.
+This project is structured as a 10-month independent research programme. Current phase: **Month 6 - Reporting & Network Analysis (Phase 3)**.
 
 **Phase 1 - Foundation (Months 1-3)** ✅ *Complete*
 - Mathematical foundations of PQC schemes
@@ -306,6 +312,17 @@ Until the manuscript is published, you may cite this repository:
   note         = {Open-source research project, in development}
 }
 ```
+
+---
+
+## Contributing
+
+Feedback, issues, and pull requests are welcome - 
+especially on the HNDL scoring model and weights. 
+If you spot something wrong, have a suggestion, or 
+are working on NIST PQC migration yourself, open an 
+issue or start a discussion. Every contribution 
+helps improve the tool.
 
 ---
 
