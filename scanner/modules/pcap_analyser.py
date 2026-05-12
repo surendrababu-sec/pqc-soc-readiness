@@ -29,3 +29,113 @@ def check_if_tls_handshake(raw_tcp_payload):
 
     # All checks passes, this is a TLS handshake
     return True, handshake_type, record_data
+
+
+# Digs inside a Client Hello record and pulls out two things:
+# The list of cipher suites the client offered, and the supported groups from the extensions.
+def parse_client_hello(record_data):
+
+    result = {"cipher_suites":[], "supported_groups":[]}
+
+    try:
+
+        # The Client Hello body starts at index 4 inside record_data
+        # (1 byte handshake type + 3 bytes handshake length = 4 bytes to skip)
+        # Then we skip client version (2 bytes) and client random (32 bytes)
+        # That puts us at index 38, where the session ID length lives
+
+        session_id_length_index = 38
+
+        # Make sure it actually contains those many bytes
+        if len(record_data) <= session_id_length_index:
+            return result
+        
+        # Get the session ID length to skip those amount of bytes
+        session_id_length = record_data[session_id_length_index]
+
+        # After the session ID, the next byte is cipher suites length
+        cipher_suites_length_index = session_id_length_index + 1 + session_id_length
+
+        if len(record_data) <= cipher_suites_length_index + 1:
+            return result
+        
+        # Read the cipher suites length (2bytes), big-endian
+        cipher_suites_length = struct.unpack(">H", record_data[cipher_suites_length_index : cipher_suites_length_index + 2])[0]
+
+        # The actual cipher suite values start right after the 2-byte length
+        cipher_data_start = cipher_suites_length_index + 2
+        cipher_data_end = cipher_data_start + cipher_suites_length
+
+        if len(record_data) < cipher_data_end:
+            return result
+        
+        # Each cipher suites is eaxctly 2 bytes
+        for position in range(cipher_data_start, cipher_data_end, 2):
+            if position + 2 <= len(record_data):
+                suite_value = struct.unpack(">H", record_data[position : position + 2])[0]
+                result["cipher_suites"].append(suite_value)
+
+        # Now find the supported_groups extension
+        # First skip the compression methods to reach the extensions
+        # compression length is 1 byte, it sits straight after the cipher suites data
+
+        compression_length_index = cipher_data_end
+        if len(record_data) <= compression_length_index:
+            return result
+        
+        compression_length = record_data[compression_length_index]
+
+        # Extensions length sits right after compression methods
+        extensions_length_index = compression_length_index + 1 + compression_length
+        if len(record_data) <= extensions_length_index + 1:
+            return result
+        
+        # Read the total extensions length, 2 bytes
+        extensions_length = struct.unpack(">H", record_data[extensions_length_index : extensions_length_index + 2])[0]
+
+        # Extensions data starts right after the 2 bytes extensions length
+        extensions_start = extensions_length_index + 2
+        extensions_end = extensions_start + extensions_length
+
+        # Walk through each extension one by one
+        # Each extension has 2 bytes type + 2 bytes length + data
+        ext_offset = extensions_start
+
+        while ext_offset + 4 <= min(extensions_end, len(record_data)):
+
+            # Read the extension type, 2 bytes
+            ext_type = struct.unpack(">H", record_data[ext_offset : ext_offset + 2])[0]
+
+            # Same for ext length
+            ext_length = struct.unpack(">H", record_data[ext_offset + 2 : ext_offset + 4])[0]
+
+            # 0x000A is the supported_groups extension, this is what we need and it s completely fixed. The IANA (Internet Assigned Numbers Authority) assigned it.
+            if ext_type == 0x000A:
+
+                # Inside supported_groups: 2 bytes for the groups list length
+                # then 2 bytes per group
+                groups_data_start = ext_offset + 4
+                if groups_data_start + 2 <= len(record_data):
+                    groups_list_length = struct.unpack(">H", record_data[groups_data_start : groups_data_start + 2])[0]
+
+                    # Read each group, 2 bytes at a time
+                    group_offset = groups_data_start + 2
+                    group_end = group_offset + groups_list_length
+
+                    while group_offset + 2 <= min(group_end, len(record_data)):
+                        group_id = struct.unpack(">H", record_data[group_offset : group_offset + 2])[0]
+                        result["supported_groups"].append(group_id)
+                        group_offset += 2
+
+                # Found what we came for, no need to keep walking extensions
+                break
+
+            # if not, move to the next extension
+            # Jump bytes: 2 bytes type + 2 bytes len + the extensions data
+            ext_offset += 4 + ext_length
+
+    except(struct.error, IndexError):
+        # If something went wrong parsing, return whatever we managed to collect
+        pass
+
+    return result
