@@ -139,3 +139,38 @@ def parse_client_hello(record_data):
         pass
 
     return result
+
+
+# Same for Server Hello record and pulls out the one cipher suite the server chose
+# This was the agreed cipher suite by server from client cipher suites list
+def parse_server_hello(record_data):
+
+    result = {"selected_cipher_suite": None}
+
+    try:
+
+        # Navigation is identical to Client Hello up to the cipher suite
+        session_id_length_index = 38
+
+        if len(record_data) <= session_id_length_index:
+             return result
+         
+        # Skip the session ID data
+        session_id_length = record_data[session_id_length_index]
+
+        selected_suite_index = session_id_length_index + 1 + session_id_length
+        
+        # Make sure we have 2 bytes available to read the cipher suite
+        if len(record_data) < selected_suite_index + 2:
+            return result
+        
+        # Read the server selected cipher suite (2 bytes)
+        selected_cipher_suite = struct.unpack(">H", record_data[selected_suite_index : selected_suite_index + 2])[0]
+
+        result["selected_cipher_suite"] = selected_cipher_suite
+
+    except(struct.error, IndexError):
+
+        pass
+
+    return result
