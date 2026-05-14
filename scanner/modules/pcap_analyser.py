@@ -1,4 +1,98 @@
 import struct 
+import csv
+from pathlib import Path
+
+# Path to knowledge folder
+knowledge_folder = Path(__file__).parent.parent/ "knowledge"
+
+# Loads the IANA cipher suite registry from our local CSV file.
+# Builds a flat lookup dictionary so classify_cipher_suite can find any suite instantly.
+def load_cipher_suites():
+    
+    # This is the empty dictionary to be fill and return
+    # Key = the integer cipher suite value
+    # Value = suite name, key exchange, and vulnerability
+    cipher_suite_lookup = {}
+
+    csv_file_path = knowledge_folder/ "cipher_suites.csv"
+
+    with open(csv_file_path, "r", encoding="utf-8") as open_file:
+
+        csv_reader = csv.reader(open_file)
+
+        # Skip the header row
+        next(csv_reader)
+
+        for row in csv_reader:
+
+            # Skip rows that do not have enough columns
+            if len(row) < 2:
+                continue
+
+            # Remove the quote characters & spaces
+            raw_value = row[0].strip('"').strip()
+
+            # Skip range and wildcard entries, these represent blocks, not individual suites
+            if "-" in raw_value or "*" in raw_value:
+                continue
+
+            # Read the description
+            suite_name = row[1].strip()
+
+            # Skip reserved and unassigned entries
+            if not suite_name or "reserved" in suite_name.lower() or "unassigned" in suite_name.lower():
+                continue
+
+            # Split the two hex bytes apart on the comma
+            value_parts = raw_value.split(",")
+
+            # Need exactly two parts, skip anything malformed
+            if len(value_parts) != 2:
+                continue
+
+            # Convert each hex string to an integer
+            try:
+                high_byte = int(value_parts[0], 16)
+                low_byte  = int(value_parts[1], 16)
+            except ValueError:
+                # If conversion fails
+                continue
+
+            # Combine the two bytes into one 2-byte integer
+            # Two bytes arrive separately, so move the high byte one full byte to the left
+            # and put the low byte into the space that opens up. Together make one value.
+            full_value = (high_byte << 8) | low_byte
+
+            # Work out the key exchange algorithm from the name
+            # The order matters
+            if "ECDHE" in suite_name or "ECDH_" in suite_name:
+                key_exchange = "ECC"
+                is_vulnerable = True
+
+            elif "DHE" in suite_name or "_DH_" in suite_name:
+                key_exchange = "DH"
+                is_vulnerable = True
+
+            elif "TLS_AES" in suite_name or "TLS_CHACHA20" in suite_name:
+                key_exchange = "TLS13"
+                is_vulnerable = None    # depends on supported groups
+
+            elif "RSA" in suite_name:
+                key_exchange = "RSA"
+                is_vulnerable = True
+
+            else:
+                # Kerberos, PSK, SRP, GOST, NULL - not relevant to HNDL
+                key_exchange   = "Unknown"
+                is_vulnerable  = None
+
+            # Store the cipher suite in the lookup dictionary
+            cipher_suite_lookup[full_value] = {"name":suite_name, "key_exchange":key_exchange, "quantum_vulnerable":is_vulnerable}
+
+    return cipher_suite_lookup
+
+# Load the cipher suites once when this module is imported.
+ALL_CIPHER_SUITES = load_cipher_suites()
 
 # Takes the raw bytes from a TCP packet and checks
 # is this a TLS handshake? if yes, is it a Client Hello or Server Hello?
