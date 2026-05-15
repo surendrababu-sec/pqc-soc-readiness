@@ -94,6 +94,23 @@ def load_cipher_suites():
 # Load the cipher suites once when this module is imported.
 ALL_CIPHER_SUITES = load_cipher_suites()
 
+def classify_cipher_suite(suite_value):
+
+    # Look up this suite value in the loaded dictionary
+    # Used .get(), to return None instead of crashing if the suite is not in the list
+    suite_entry = ALL_CIPHER_SUITES.get(suite_value)
+
+    # This covers private use ranges and any suites added after the CSV was downloaded
+    if suite_entry is None:
+        return "Unknown", None, f"Unknown suite (0x{suite_value:04X})"
+    
+    algorithm = suite_entry["key_exchange"]
+    is_vulnerable = suite_entry["quantum_vulnerable"]
+    suite_name = suite_entry["name"]
+
+    return algorithm, is_vulnerable, suite_name
+
+
 # Takes the raw bytes from a TCP packet and checks
 # is this a TLS handshake? if yes, is it a Client Hello or Server Hello?
 def check_if_tls_handshake(raw_tcp_payload):
