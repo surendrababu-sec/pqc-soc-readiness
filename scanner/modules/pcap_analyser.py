@@ -1,6 +1,7 @@
 import struct 
 import csv
 from pathlib import Path
+from scapy.all import rdpcap, IP, TCP
 
 # Path to knowledge folder
 knowledge_folder = Path(__file__).parent.parent/ "knowledge"
@@ -94,9 +95,89 @@ def load_cipher_suites():
 # Load the cipher suites once when this module is imported.
 ALL_CIPHER_SUITES = load_cipher_suites()
 
+# Loads the IANA supported groups registry from our local CSV file.
+# Same idea as load_cipher_suites
+def load_supported_groups():
+
+    # The dictionary will fill and return
+    # Key = group ID as a plain integer
+    # Value = group name, its type, and whether it is quantum vulnerable
+    supported_group_lookup = {}
+
+    csv_file_path  = knowledge_folder/"supported_groups.csv"
+
+    with open(csv_file_path, "r", encoding="utf-8") as open_file:
+
+        csv_reader = csv.reader(open_file)
+
+        # Skip the header row
+        next(csv_reader)
+
+        for row in csv_reader:
+
+            # Skips rows that do not have enough columns
+            if len(row) < 2:
+                continue
+
+            raw_value = row[0].strip()
+
+            # Skip range rows and wildcard rows
+            if "-" in raw_value or "*" in raw_value:
+                continue
+
+            group_name = row[1].strip()
+
+            # Skip reserved and unassigned entries
+            if not group_name or "reserved" in group_name.lower() or "unassigned" in group_name.lower():
+                continue
+
+            try:
+                group_id = int(raw_value)
+            except ValueError:
+                # If it is not a clean number, skip the row
+                continue
+
+            # Work out the group type from the description.
+            # The order matters
+            if "MLKEM" in group_name and any(classical in group_name for classical in ["X25519", "SecP", "secp", "SM2"]):
+                # Classical curve combined with ML-KEM - hybrid, transitional
+                group_type = "ECC+ML-KEM"
+                is_vulnerable = False
+
+            elif "Kyber" in group_name:
+                # Old draft hybrid - obsolete
+                group_type = "ECC+ML-KEM (obsolete)"
+                is_vulnerable = False
+
+            elif "MLKEM" in group_name:
+                # Pure ML-KEM
+                group_type = "ML-KEM"
+                is_vulnerable = False
+
+            elif group_name.startswith("ffdhe"):
+                # Finite field Diffle-Hellman - quantum vulnerable
+                group_type = "DH"
+                is_vulnerable = True
+
+            elif any(classical in group_name for classical in ["secp", "sect", "x25519", "x448", "brainpool", "GC256", "GC512", "curveSM2", "arbitrary"]):
+                # Classical elliptic curve - quantum vulnerable
+                group_type = "ECC"
+                is_vulnerable = True
+
+            else:
+                group_type = "Unknown"
+                is_vulnerable = None
+
+            supported_group_lookup[group_id] = {"name": group_name, "group_type": group_type, "quantum_vulnerable": is_vulnerable}
+    
+    return supported_group_lookup
+
+# Load once when this module is imported
+ALL_SUPPORTED_GROUPS = load_supported_groups()
+
+# Takes one cipher suite integer, looks it up in the loaded dictionary
 def classify_cipher_suite(suite_value):
 
-    # Look up this suite value in the loaded dictionary
     # Used .get(), to return None instead of crashing if the suite is not in the list
     suite_entry = ALL_CIPHER_SUITES.get(suite_value)
 
@@ -109,6 +190,223 @@ def classify_cipher_suite(suite_value):
     suite_name = suite_entry["name"]
 
     return algorithm, is_vulnerable, suite_name
+
+
+# Takes the list of group IDs from a Client Hello
+def classify_supported_groups(group_ids):
+
+    has_vulnerable = False
+    has_hybrid = False
+    has_pure_pqc = False
+    dominant_vulnerable_type = "ECC"      # most connections use ECC, DH overrides if found
+
+    for group_id in group_ids:
+
+        # Look up this group id in the loaded dictionary
+        group_entry = ALL_SUPPORTED_GROUPS.get(group_id)
+
+        if group_entry is None:
+            continue
+
+        group_type = group_entry["group_type"]
+
+        if group_type == "ML-KEM":
+            # Pure post-quantum
+            has_pure_pqc = True
+
+        elif "ECC+ML-KEM" in group_type:
+            # Hybrid - classical curver combined with ML-KEM
+            has_hybrid = True
+
+        elif group_type == "DH":
+            # Classical ffdh - quantum vulnerable
+            has_vulnerable = True
+            dominant_vulnerable_type = "DH"
+
+        elif group_type == "ECC":
+            # Classical elliptic curve - quantum vulnerable
+            has_vulnerable = True
+
+    
+    # Now work out the overall verdict
+    # The order matters, most specific first.
+
+    if has_vulnerable and has_hybrid:
+        # Both classical and hybrid groups are present
+        # the server might pick the classical one, so flag as vulnerable
+        return dominant_vulnerable_type, True
+    
+    elif has_vulnerable and not has_hybrid and not has_pure_pqc:
+        # Only classical groups - fully quantum vulnerable
+        return dominant_vulnerable_type, True
+    
+    elif has_hybrid and not has_vulnerable:
+        # Only hybrid PQC groups
+        return "ECC+ML-KEM", False
+    
+    elif has_pure_pqc and not has_vulnerable and not has_hybrid:
+        # Only pure ML-KEM groups
+        return "ML-KEM", False
+    
+    elif has_pure_pqc and has_hybrid and not has_vulnerable:
+        # Mix of pure PQC and hybrid
+        return "ML-KEM", False
+    
+    else:
+        return "Unknown", None
+
+
+# This is the one function that main.py calls directly.
+# It opens the PCAP file, walks through every packet looking for TLS handshakes,
+# pieces together what cipher suites are being negotiated,
+# and hands back a clean list of findings for the risk engine to score.
+def analyse_pcap(pcap_filepath):
+
+    # Turn the file path into a Path object and check things about it
+    pcap_path = Path(pcap_filepath)
+
+    # Before doing anything else, does the file actually exist?
+    if not pcap_path.exists():
+        raise FileNotFoundError(f"Cannot find the PCAP file: {pcap_filepath}")
+    
+    # Make sure it is a capture file and not something unrelated
+    if pcap_path.suffix.lower() not in [".pcap", ".pcapng", ".cap"]:
+        raise ValueError(f"This needs to be a .pcap, .pcapng, or .cap file: {pcap_filepath}")
+
+    # Hand the file to scapy and get back every packet as a list
+    all_packets = rdpcap(str(pcap_path))
+
+    # This tracks TLS sessions, while going through the packets
+    # Key = four values that together identify one unique TCP connection
+    # Value = everything we know about that session so far
+    tls_sessions = {}
+
+    for packet in all_packets:
+
+        # Skip anything that is not a proper IP and TCP packet.
+        if not packet.haslayer(IP) or not packet.haslayer(TCP):
+            continue
+
+        # Pull the raw bytes out of the TCP packet
+        try:
+            raw_payload = bytes(packet[TCP].payload)
+        except Exception:
+            continue
+
+        if not raw_payload:
+            continue
+
+        # Is this a TLS handshake?
+        is_handshake, handshake_type, record_data = check_if_tls_handshake(raw_payload)
+
+        if not is_handshake or record_data is None:
+            continue
+
+        # Read the IP addresses and port numbers from this packet.
+        # These four values together are like a fingerprint for this connection
+        # no two connections on the network share the same combination at the same time.
+        client_ip = packet[IP].src
+        server_ip = packet[IP].dst
+        client_port = packet[TCP].sport
+        server_port = packet[TCP].dport
+
+        # A Client Hello means the client is starting a fresh TLS connection
+        if handshake_type == 0x01:
+            
+            # Parse the Client Hello to get the cipher suites and supported groups
+            client_hello_data = parse_client_hello(record_data)
+
+            # Store the session under a key, Client Hello: client -> server (src=client, dst=server)
+            session_key = (server_ip, server_port, client_ip, client_port)
+
+            # Only store this session if it is not seen before
+            if session_key not in tls_sessions:
+                tls_sessions[session_key] = {
+                    "server_ip"        : server_ip,
+                    "server_port"      : server_port,
+                    "client_ip"        : client_ip,
+                    "offered_suites"   : client_hello_data["cipher_suites"],
+                    "supported_groups" : client_hello_data["supported_groups"],
+                    "selected_suite"   : None,
+                    "has_server_hello" : False
+
+                }
+
+        # A Server Hello means the server has picked one cipher suite from the client's list
+        elif handshake_type == 0x02:
+
+            # Parse the Server Hello to get the chosen suite
+            server_hello_data = parse_server_hello(record_data)
+
+            # Server Hello: server -> client (src=server, dst=client)
+            session_key = (client_ip, client_port, server_ip, server_port)
+
+            # If already saw the Client Hello for this connection, update it
+            if session_key in tls_sessions:
+                tls_sessions[session_key]["selected_suite"]   = server_hello_data["selected_cipher_suite"]
+                tls_sessions[session_key]["has_server_hello"] = True
+
+    # Done walking packets, now turn everything tracked into findings       
+    all_findings = []
+
+
+    # Keep track of which servers are already reported on.
+    # only need one finding per server, not one per connection.
+    reported_servers = set()
+
+    for session_key, session in tls_sessions.items():
+
+        server_endpoint = (session["server_ip"], session["server_port"])
+
+        if server_endpoint in reported_servers:
+            continue
+
+        # Work out what cipher suite was actually used in this session
+        algorithm = None
+        is_vulnerable = None
+        suite_name = None
+
+        if session["selected_suite"] is not None:
+            # server's chosen suite
+            algorithm, is_vulnerable, suite_name = classify_cipher_suite(session["selected_suite"])
+
+            # TLS 1.3 cipher suites tells nothing about key exchange
+            # the suite name only describes symmetric encryption and hashing.
+            # Need to look at the supported groups to find out what key exchange algorithm was actually used.
+            if algorithm == "TLS13" and session["supported_groups"]:
+                algorithm, is_vulnerable = classify_supported_groups(session["supported_groups"])
+                suite_name = f"TLS 1.3 with {algorithm}"
+
+        elif session["offered_suites"]:
+            # No Server Hello was captured, fall back to what the client offered.
+            # Walk through the offered suites and stop at the first vulnerable one
+            for offered_suite in session["offered_suites"]:
+                algorithm, is_vulnerable, suite_name = classify_cipher_suite(offered_suite)
+                if is_vulnerable:
+                    break
+
+        if algorithm is None or algorithm == "Unknown":  # Skip this session
+            continue
+
+        # Build the finding dictionary, same as what certificate_analyser produces
+        # so it drops straight into the risk engine
+        finding = {
+            "target"           : f"{session['server_ip']}:{session['server_port']}",
+            "client_ip"        : session["client_ip"],
+            "algorithm"        : algorithm,
+            "cipher_suite"     : suite_name,
+            "key_size"         : None,
+            "vulnerable"       : is_vulnerable,
+            "issuer"           : "N/A - PCAP analysis",
+            "expires"          : "N/A - PCAP analysis",
+            "has_server_hello" : session["has_server_hello"],
+            "source"           : "pcap_handshake"        
+        }
+
+        all_findings.append(finding)
+        reported_servers.add(server_endpoint)
+
+    return all_findings
 
 
 # Takes the raw bytes from a TCP packet and checks
@@ -129,6 +427,9 @@ def check_if_tls_handshake(raw_tcp_payload):
     
     record_length = struct.unpack(">H", raw_tcp_payload[3:5])[0]
 
+    if len(raw_tcp_payload) < 5+record_length:
+        return False, None, None
+
     # Record data starts from byte 5
     record_data = raw_tcp_payload[5:5+record_length]
 
@@ -148,14 +449,14 @@ def parse_client_hello(record_data):
 
     result = {"cipher_suites":[], "supported_groups":[]}
 
+    # The Client Hello body starts at index 4 inside record_data
+    # (1 byte handshake type + 3 bytes handshake length = 4 bytes to skip)
+    # Then we skip client version (2 bytes) and client random (32 bytes)
+    # That puts us at index 38, where the session ID length lives
+
+    session_id_length_index = 38
+
     try:
-
-        # The Client Hello body starts at index 4 inside record_data
-        # (1 byte handshake type + 3 bytes handshake length = 4 bytes to skip)
-        # Then we skip client version (2 bytes) and client random (32 bytes)
-        # That puts us at index 38, where the session ID length lives
-
-        session_id_length_index = 38
 
         # Make sure it actually contains those many bytes
         if len(record_data) <= session_id_length_index:
@@ -180,7 +481,7 @@ def parse_client_hello(record_data):
         if len(record_data) < cipher_data_end:
             return result
         
-        # Each cipher suites is eaxctly 2 bytes
+        # Each cipher suites is exactly 2 bytes
         for position in range(cipher_data_start, cipher_data_end, 2):
             if position + 2 <= len(record_data):
                 suite_value = struct.unpack(">H", record_data[position : position + 2])[0]
@@ -220,7 +521,7 @@ def parse_client_hello(record_data):
             # Same for ext length
             ext_length = struct.unpack(">H", record_data[ext_offset + 2 : ext_offset + 4])[0]
 
-            # 0x000A is the supported_groups extension, this is what we need and it s completely fixed. The IANA (Internet Assigned Numbers Authority) assigned it.
+            # 0x000A is the supported_groups extension, fixed by IANA (Internet Assigned Numbers Authority), never changes
             if ext_type == 0x000A:
 
                 # Inside supported_groups: 2 bytes for the groups list length
@@ -258,10 +559,10 @@ def parse_server_hello(record_data):
 
     result = {"selected_cipher_suite": None}
 
-    try:
+    # Navigation is identical to Client Hello up to the cipher suite
+    session_id_length_index = 38
 
-        # Navigation is identical to Client Hello up to the cipher suite
-        session_id_length_index = 38
+    try:
 
         if len(record_data) <= session_id_length_index:
              return result
