@@ -1,32 +1,48 @@
 # NIST PQC Migration Mappings
-# This file maps quantum-vulnerable algorithms to their post-quantum replacements.
-# Based on NIST FIPS 203, 204, 205 and transition guidance SP 800-208.
+#
+# Maps quantum-vulnerable algorithms to their NIST post-quantum replacements.
+#
+# Standards:
+#   FIPS 203 - Module-Lattice-Based Key-Encapsulation Mechanism Standard (ML-KEM)
+#   FIPS 204 - Module-Lattice-Based Digital Signature Standard (ML-DSA)
+#   FIPS 205 - Stateless Hash-Based Digital Signature Standard (SLH-DSA)
+#   SP 800-208 - Recommendation for Stateful Hash-Based Signature Schemes (LMS, XMSS)
+#   SP 800-131A Rev.3 - Transitioning the Use of Cryptographic Algorithms and Key Lengths
+#
+# Applies to both TLS certificate findings and PCAP handshake findings.
 
 RSA_signature:
   standard: "FIPS 204 (ML-DSA)"
-  migration: "Replace RSA signature with ML-DSA-65. For conservative deployments where hash-based signatures are preferred, SLH-DSA (FIPS 205) is an alternative."
+  migration: "Migrate certificate signatures from RSA to ML-DSA-65 (FIPS 204). Deploy ML-DSA alongside RSA in hybrid mode during transition to preserve backward compatibility. For environments requiring conservative assurance based on well-understood hash function security rather than lattice hardness assumptions, SLH-DSA (FIPS 205) is the approved alternative at the cost of significantly larger signatures (approximately 8 KB versus ML-DSA's 3.3 KB)."
 
 RSA_key_exchange:
   standard: "FIPS 203 (ML-KEM)"
-  migration: "Replace RSA key transport with ML-KEM-768. Run in hybrid mode alongside RSA during the transition period per NIST SP 800-208."
+  migration: "RSA key transport was removed from TLS 1.3 entirely, detecting it here means this endpoint is running TLS 1.2 or earlier. Migration requires both a key exchange upgrade to ML-KEM-768 (FIPS 203) and a TLS protocol upgrade to TLS 1.3. During TLS 1.3 deployment, run ML-KEM in hybrid mode alongside X25519 for the transition period. All session keys derived from RSA key transport today are retroactively decryptable once a sufficiently powerful quantum computer exists, this endpoint is directly exposed to the harvest-now-decrypt-later threat."
 
 RSA_encryption:
   standard: "FIPS 203 (ML-KEM)"
-  migration: "Replace RSA-OAEP encryption with ML-KEM-768 combined with symmetric encryption."
+  migration: "For RSA used in hybrid public-key encryption (RSA-OAEP encapsulating a symmetric key): replace the RSA-OAEP step with ML-KEM-768 (FIPS 203). This is a direct KEM substitution, the underlying symmetric encryption layer is unchanged. If the same RSA key is also used for signatures, migrate those to ML-DSA-65 (FIPS 204) in the same window. Replacing one without the other leaves the endpoint partially exposed."
 
 ECC_signature:
   standard: "FIPS 204 (ML-DSA)"
-  migration: "Replace ECDSA with ML-DSA-65. This matches the security level of P-256 and is the direct post-quantum equivalent."
+  migration: "Migrate certificate signatures from ECDSA to ML-DSA-65 (FIPS 204) - the post-quantum equivalent at the P-256 security level. Note the operational impact: ML-DSA-65 signatures are approximately 50 times larger than ECDSA P-256 (3,309 versus 64 bytes), with corresponding handshake overhead. Deploy in hybrid mode during transition. For environments requiring conservative assurance based on hash function security rather than lattice hardness, SLH-DSA (FIPS 205) is the approved alternative."
 
 ECC_key_exchange:
   standard: "FIPS 203 (ML-KEM)"
-  migration: "Replace ECDH with hybrid ML-KEM-768 alongside X25519 during the transition period per NIST SP 800-208."
+  migration: "Migrate key exchange from ECDH to ML-KEM-768 (FIPS 203). Deploy in hybrid mode alongside X25519 during transition, this is the X25519MLKEM768 pattern already in production at Google and Cloudflare since 2024. Prioritise endpoints carrying long-lived or sensitive data first, as those are the primary harvest-now-decrypt-later targets."
 
 DH_key_exchange:
   standard: "FIPS 203 (ML-KEM)"
-  migration: "Replace Diffie-Hellman key exchange with ML-KEM-768."
+  migration: "Replace finite-field Diffie-Hellman (whether RFC 7919 FFDHE groups or legacy parameters) with ML-KEM-768 (FIPS 203). Unlike elliptic curves, finite-field DH has no post-quantum variant, it must be replaced entirely, not upgraded. Deploy ML-KEM in hybrid mode during transition. Legacy DH parameters carry additional classical risk from small subgroup attacks - prioritise these endpoints."
 
 DSA_signature:
   standard: "FIPS 204 (ML-DSA)"
-  migration: "Replace DSA with ML-DSA-65. DSA is already deprecated in most modern systems."
-  
+  migration: "Migrate from DSA to ML-DSA-65 (FIPS 204). DSA is deprecated by NIST SP 800-131A Rev.3, this migration addresses both classical deprecation and quantum vulnerability simultaneously. For environments requiring conservative assurance based on hash function security, SLH-DSA (FIPS 205) is the approved alternative."
+
+EdDSA_signature:
+  standard: "FIPS 204 (ML-DSA)"
+  migration: "Migrate from Ed25519 or Ed448 to ML-DSA-65 (FIPS 204). Although EdDSA is current best-practice for classical deployments, it relies on the elliptic curve discrete logarithm problem and is broken by Shor's algorithm at the same complexity as ECDSA. Migration urgency is identical to ECDSA. Deploy in hybrid mode during transition."
+
+ECC_hybrid:
+  standard: "FIPS 203 (ML-KEM) - hybrid deployment detected"
+  migration: "This endpoint is using hybrid X25519+ML-KEM-768 key exchange (X25519MLKEM768), the current best-practice transitional deployment combining the IETF-standardised hybrid construction with the NIST-standardised ML-KEM (FIPS 203). No immediate migration action required for key exchange. Monitor for industry transition to pure ML-KEM once classical risks recede and standardisation matures further."

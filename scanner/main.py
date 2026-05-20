@@ -15,6 +15,7 @@ from rich.panel import Panel
 
 from modules.certificate_analyser import get_certificate, analyse_certificate, scan_from_file
 from modules.risk_engine import evaluate_risk
+from modules.pcap_analyser import analyse_pcap
 
 # Single console instance used throughout for all formatted output.
 console = Console()
@@ -148,6 +149,9 @@ if __name__ == "__main__":
 
     # File of targets - path to a text file with one domain per line
     scan_group.add_argument("--targets", metavar="file", help="Path to a text file containing target domains (one per line)")
+
+    # PCAP file - path to a network capture file for handshake analysis
+    scan_group.add_argument("--pcap", metavar="file", help="Path to a PCAP capture file for TLS handshake analysis (e.g. capture.pcap)")
 
     # Port is optional - if not specified, it defaults to 443 (standard HTTPS)
     parser.add_argument("--port", type=int, default=443, metavar="port", help="Target port (default: 443)")
