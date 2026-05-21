@@ -114,12 +114,19 @@ def get_nist_recommendation(algorithm, usage="signature"):
     
     if "RSA" in algorithm:
         mapping_key = f"RSA_{usage}"
+    elif "ECC+ML-KEM" in algorithm:
+        # Hybrid post-quantum, classical curve combined with ML-KEM.
+        # Also catches "ECC+ML-KEM (obsolete)"
+        mapping_key = f"ECC_hybrid"
     elif "ECC" in algorithm:
         mapping_key = f"ECC_{usage}"
     elif "DSA" in algorithm:
         mapping_key = "DSA_signature"
     elif "DH" in algorithm:
         mapping_key = "DH_key_exchange"
+    elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
+        # Pure post-quantum algorithm - already safe, nothing to migrate.
+        return "FIPS 203/204/205 - already post-quantum", "This endpoint is already using NIST post-quantum cryptography. No migration action required."
     else:
         return "No recommendation available", "Algorithm not recognised - manual review required"
     
@@ -148,6 +155,12 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         rationale = (
             f"Algorithm could not be identified, manual review required. "
             f"Score is based on a precautionary medium-risk assumption. "
+            f"HNDL exposure score: {score}/100 ({severity})."
+        )
+    elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
+        rationale = (
+            f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
+            f"No harvest-now-decrypt-later exposure detected for this endpoint. "
             f"HNDL exposure score: {score}/100 ({severity})."
         )
     else:
