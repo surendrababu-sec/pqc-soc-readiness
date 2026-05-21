@@ -76,6 +76,57 @@ def display_results(target, findings, risk):
     # Print the rationale
     console.print(Panel(risk.rationale, title="Rationale", style="cyan"))
 
+# Shows PCAP findings in a colour coded table.
+# This is separate from display_results because PCAP findings carry different fields
+def display_pcap_results(all_findings, all_risks):
+
+    console.print(Panel("PQC-SOC Readiness Scanner - PCAP Handshake Analysis", style="bold blue"))
+
+    results_table = Table(show_header=True, header_style="bold white", expand=True)
+
+    results_table.add_column("Server Endpoint", style="cyan")
+    results_table.add_column("Client IP")
+    results_table.add_column("Algorithm")
+    results_table.add_column("Cipher Suite")
+    results_table.add_column("HNDL Score")
+    results_table.add_column("Severity")
+    results_table.add_column("NIST Standard")
+    results_table.add_column("Server Hello")
+
+    for finding, risk in zip(all_findings, all_risks):
+
+        # Red for vulnerable, green for safe, yellow for unsure ones
+        if finding["vulnerable"] is True:
+            row_color = "red"
+        elif finding["vulnerable"] is False:
+            row_color = "green"
+        else:
+            row_color = "yellow"
+
+        # Without the Server Hello, only the client's offered options are known
+        # not what the server chose.
+        server_hello_label = "Yes" if finding.get("has_server_hello") else "No, client offer only"
+
+        results_table.add_row(
+            finding["target"],
+            finding["client_ip"],
+            finding["algorithm"],
+            finding["cipher_suite"],
+            str(risk.score),
+            risk.severity,
+            risk.nist_standard,
+            server_hello_label,
+            style=row_color
+        )
+
+    console.print(results_table)
+
+    # Print migration advice only for sessions that are vulnerable
+    for finding, risk in zip(all_findings, all_risks):
+        if finding["vulnerable"] is True:
+            console.print(Panel(risk.migration_advice, title=f"Migration Advice - {finding['target']} ({finding['algorithm']})", style="yellow"))
+
+
 # Takes everything the scanner found and writes it into a structured JSON file.
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
 def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_count=0):
@@ -232,5 +283,76 @@ if __name__ == "__main__":
         if arguments.output and all_findings:
             save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_count=failed_count)
 
+    # --- PCAP handshake analysis mode ---
+    elif arguments.pcap:
 
+        console.print(f"\n[bold cyan]Loading PCAP file: {arguments.pcap}...[/bold cyan]")
+
+        try:
+
+            # Hand the file to the PCAP analyser and get back a list of findings
+            pcap_findings = analyse_pcap(arguments.pcap)
+
+            if not pcap_findings:
+                # Nothing found, let the user know clearly
+                console.print("\n[bold yellow]No TLS handshakes found in this capture file.[/bold yellow]")
+                console.print("[yellow]Make sure the file contains TLS traffic and try again.[/yellow]")
+
+            else:
+                console.print("[bold cyan]Evaluating HNDL exposure for each session...[/bold cyan]")
+
+                # Score each finding through the risk engine.
+                # These came from handshakes not certificates, so key_exchange is the right usage.
+                all_risks = []
+                for finding in pcap_findings:
+                    risk = evaluate_risk(
+                        finding["algorithm"],
+                        finding["key_size"],
+                        data_sensitivity=arguments.sensitivity,
+                        data_lifetime=arguments.lifetime,
+                        exposure_surface=arguments.exposure,
+                        usage="key_exchange"
+                    )
+                    all_risks.append(risk)
+
+                # Show the results table with migration advice panels underneath
+                display_pcap_results(pcap_findings, all_risks)
+
+                # Print a summary at the bottom
+                total_sessions = len(pcap_findings)
+                vulnerable_count = sum(1 for f in pcap_findings if f["vulnerable"] is True)
+                safe_count = sum(1 for f in pcap_findings if f["vulnerable"] is False)
+                unknown_count = sum(1 for f in pcap_findings if f["vulnerable"] is None)
+
+                console.print(f"\n[bold]Scan complete.[/bold]")
+                console.print(f"Sessions analysed  : {total_sessions}")
+                console.print(f"[bold red]Vulnerable         : {vulnerable_count}[/bold red]")
+                console.print(f"[bold green]Safe or hybrid     : {safe_count}[/bold green]")
+                console.print(f"[bold yellow]Unknown            : {unknown_count}[/bold yellow]")
+
+                # Save a JSON report if the user asked for one
+                if arguments.output:
+                    enriched_findings = []
+                    for finding, risk in zip(pcap_findings, all_risks):
+                        # Copy the finding dictionary
+                        enriched = dict(finding)
+                        enriched["hndl_score"]       = risk.score
+                        enriched["severity"]         = risk.severity
+                        enriched["nist_standard"]    = risk.nist_standard
+                        enriched["migration_advice"] = risk.migration_advice
+                        enriched["rationale"]        = risk.rationale
+                        enriched_findings.append(enriched)
+
+                    save_json_report(arguments.output, enriched_findings, arguments, total_in_file=total_sessions)
         
+        except FileNotFoundError as error:
+            console.print(f"\n[bold red]{error}[/bold red]")
+
+        except ValueError as error:
+            console.print(f"\n[bold red]{error}[/bold red]")
+
+        except Exception as error:
+            console.print(f"\n[bold red]Something went wrong during PCAP analysis: {error}[/bold red]")
+
+
+                    
