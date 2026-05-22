@@ -122,9 +122,11 @@ def display_pcap_results(all_findings, all_risks):
     console.print(results_table)
 
     # Print migration advice only for sessions that are vulnerable
+    printed_advice = set()  # Is to avoid duplicate advices
     for finding, risk in zip(all_findings, all_risks):
-        if finding["vulnerable"] is True:
-            console.print(Panel(risk.migration_advice, title=f"Migration Advice - {finding['target']} ({finding['algorithm']})", style="yellow"))
+        if finding["vulnerable"] is True and finding["algorithm"] not in printed_advice:
+            console.print(Panel(risk.migration_advice, title=f"Migration Advice - {finding['algorithm']}", style="yellow"))
+            printed_advice.add(finding["algorithm"])
 
 
 # Takes everything the scanner found and writes it into a structured JSON file.

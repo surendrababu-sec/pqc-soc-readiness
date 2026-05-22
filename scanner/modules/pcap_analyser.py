@@ -198,8 +198,8 @@ def classify_supported_groups(group_ids):
     has_vulnerable = False
     has_hybrid = False
     has_pure_pqc = False
-    dominant_vulnerable_type = "ECC"      # most connections use ECC, DH overrides if found
-
+    has_vulnerable_ecc = False    # track ECC and DH separately
+    has_vulnerable_dh  = False    # which one dominates at the end, not mid-loop
     for group_id in group_ids:
 
         # Look up this group id in the loaded dictionary
@@ -221,13 +221,23 @@ def classify_supported_groups(group_ids):
         elif group_type == "DH":
             # Classical ffdh - quantum vulnerable
             has_vulnerable = True
-            dominant_vulnerable_type = "DH"
+            has_vulnerable_dh = True
 
         elif group_type == "ECC":
             # Classical elliptic curve - quantum vulnerable
             has_vulnerable = True
+            has_vulnerable_ecc = True
 
-    
+    # If both ECC and DH groups are present, TLS 1.3 picks ECC.
+    if has_vulnerable_ecc:
+        dominant_vulnerable_type = "ECC"
+    elif has_vulnerable_dh:
+        dominant_vulnerable_type = "DH"
+    else:
+        dominant_vulnerable_type = "ECC"    # safe default
+
+
+
     # Now work out the overall verdict
     # The order matters, most specific first.
 
