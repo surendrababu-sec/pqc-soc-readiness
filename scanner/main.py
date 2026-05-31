@@ -183,7 +183,7 @@ if __name__ == "__main__":
         description=(
             "PQC-SOC Readiness Scanner\n"
         "─────────────────────────────────────────────────────────────\n"
-        "Audits TLS certificates for quantum-vulnerable cryptography\n"
+        "Audits TLS for quantum-vulnerable cryptography\n"
         "(RSA, ECC, DSA, DH) under the Harvest Now, Decrypt Later\n"
         "(HNDL) threat model.\n\n"
         "Identifies systems requiring migration to NIST PQC standards:\n"
