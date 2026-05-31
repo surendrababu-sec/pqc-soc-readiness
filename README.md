@@ -237,6 +237,8 @@ python scanner/main.py --pcap capture.pcap --output pcap_report.json
 ```bash
 python scanner/main.py --help
 ```
+
+![CLI Help](assets/help_screenshot.png)
  
 ---
  
