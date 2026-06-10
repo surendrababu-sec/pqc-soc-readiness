@@ -1,5 +1,7 @@
 import struct 
 import csv
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from pathlib import Path
 from scapy.all import rdpcap, IP, TCP
 
@@ -174,6 +176,53 @@ def load_supported_groups():
 
 # Load once when this module is imported
 ALL_SUPPORTED_GROUPS = load_supported_groups()
+
+# Peeks inside a raw TCP payload and checks whether it carries a TLS Certificate message.
+# If it does, pulls out the raw DER bytes of the first certificate in the chain.
+def extract_certificate_der_from_packet(raw_payload):
+
+    # Need at least 9bytes- outer body (5) + handshake header (4)
+    if len(raw_payload) < 9:
+        return None
+    
+    # Not a TLS handshake record
+    if raw_payload[0] != 0x16:
+        return None
+    
+    # Not a TLS version
+    if raw_payload[1] != 0x03:
+        return None
+    
+    record_length = struct.unpack(">H", raw_payload[3:5])[0]
+
+    if len(raw_payload) < 5 + record_length:
+        return None
+    
+    # Slice out just the handshake data
+    record_data = raw_payload[5:5+record_length]
+
+    # Not a certificate message
+    if record_data[0] != 0x0B:
+        return None 
+    
+    # Check enough bytes for the certificate list length
+    if len(record_data) < 10:
+        return None
+    
+    # Bytes 7-9 of the record_data gives the first cert len
+    first_cert_length = struct.unpack(">I", b'\x00' + record_data[7:10])[0]
+
+    if len(record_data) < 10 + first_cert_length:
+        return None
+    
+    # Slice out the raw DER bytes
+    der_bytes =  record_data[10:10+first_cert_length]
+
+    #  A certificate shorter than 64 bytes is almost certainly malformed
+    if len(der_bytes) < 64:
+        return None
+    
+    return der_bytes
 
 # Takes one cipher suite integer, looks it up in the loaded dictionary
 def classify_cipher_suite(suite_value):
