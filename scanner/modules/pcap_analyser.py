@@ -1,5 +1,7 @@
 import struct 
 import csv
+import ssl
+import socket
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from pathlib import Path
@@ -223,6 +225,53 @@ def extract_certificate_der_from_packet(raw_payload):
         return None
     
     return der_bytes
+
+# Takes raw DER certificate bytes and reads the public key size out of it.
+def get_key_size_from_der(der_bytes):
+
+    try:
+        # Parse the raw bytes into a proper certificate object
+        certificate = x509.load_der_x509_certificate(der_bytes)
+
+        # Pull the public key out of the certificate
+        public_key = certificate.public_key()
+
+        # Both RSA and ECC hand the key size directly - no calculation needed
+        if isinstance(public_key, rsa.RSAPublicKey):
+            return public_key.key_size
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            return public_key.key_size
+        
+        # Any other key type - DSA, EdDSA, DH - not scored by key size
+        return None
+    
+    except Exception:
+        return None
+    
+# Connects directly to a server and grabs its certificate to read the key size.
+# Used when the PCAP capture did not include the Certificate message.
+def fetch_key_size_live(server_ip, server_port):
+
+    try:
+        # Skips the hostname verification
+        # PCAP sessions give IP addresses, not hostnames. so standard verification would fail even on a perfectly valid connection
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        # Open the connection with a short timeout so internal IPs fail fast rather than hanging for 30 seconds before giving up
+        with socket.create_connection((server_ip, server_port), timeout=3) as raw_connection:
+            with ssl_context.wrap_socket(raw_connection) as secure_connection:
+
+                # Pull the certificate bytes directly from the live connection
+                der_bytes = secure_connection.getpeercert(binary_form=True)
+
+                # Hand the DER bytes to the same parser 
+                return get_key_size_from_der(der_bytes)
+            
+    except Exception:
+        # Server unreachable, connection refused, timeout
+        return None
 
 # Takes one cipher suite integer, looks it up in the loaded dictionary
 def classify_cipher_suite(suite_value):
