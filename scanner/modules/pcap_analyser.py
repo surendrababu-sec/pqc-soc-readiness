@@ -273,6 +273,44 @@ def fetch_key_size_live(server_ip, server_port):
         # Server unreachable, connection refused, timeout
         return None
 
+# Used as a fallback when the actual key size cannot be read from the capture or a live fetch.
+# Values are based on Cloudflare Radar 2024 TLS deployment statistics.
+def get_modal_key_size(algorithm):
+
+    if "RSA" in algorithm:
+        return 2048  # RSA-2048 is the modal key size in public TLS
+    
+    elif "ECC" in algorithm:
+        return 256   # P-256 is the most common curve in public TLS
+    
+    # DH and everything else - key size does not affect the risk score
+    return None
+
+
+# Tries three ways to get the key size for a PCAP finding, most accurate first.
+# Returns the key size and a label so the caller always knows which tier was used.
+def get_key_size_with_fallback(der_bytes, algorithm, server_ip, server_port):
+
+    # Tier 1 - certificate was captured inside the PCAP itself
+    # This is the most accurate source - same session, same moment in time
+    if der_bytes is not None:
+        key_size = get_key_size_from_der(der_bytes)
+        if key_size is not None:
+            return key_size, "pcap_certificate"
+        
+    # Tier 2 - live certificate fetch from the server
+    # Only worth trying for RSA and ECC - the risk engine scores DH urgency regardless of key size, so a live fetch adds nothing for DH.
+    if "RSA" in algorithm or "ECC" in algorithm:
+        key_size = fetch_key_size_live(server_ip, server_port)
+        if key_size is not None:
+            return key_size, "live_fetch"
+        
+    # Tier 3 - modal baseline from documented field-wide deployment statistics
+    # Covers internal IPs, offline servers, and anything else that fell through
+    modal_key_size = get_modal_key_size(algorithm)
+    return modal_key_size, "modal_baseline"
+
+
 # Takes one cipher suite integer, looks it up in the loaded dictionary
 def classify_cipher_suite(suite_value):
 
@@ -436,7 +474,8 @@ def analyse_pcap(pcap_filepath):
                     "offered_suites"   : client_hello_data["cipher_suites"],
                     "supported_groups" : client_hello_data["supported_groups"],
                     "selected_suite"   : None,
-                    "has_server_hello" : False
+                    "has_server_hello" : False,
+                    "certificate_der"  : None   # filled in if a Certificate message is captured later
 
                 }
 
@@ -453,6 +492,17 @@ def analyse_pcap(pcap_filepath):
             if session_key in tls_sessions:
                 tls_sessions[session_key]["selected_suite"]   = server_hello_data["selected_cipher_suite"]
                 tls_sessions[session_key]["has_server_hello"] = True
+
+        elif handshake_type == 0x0B:
+
+            # Certificate comes from server to client
+            session_key = (client_ip, client_port, server_ip, server_port)
+
+            # Only store the first certificate seen for this session
+            if session_key in tls_sessions and tls_sessions[session_key]["certificate_der"] is None:
+                der_bytes = extract_certificate_der_from_packet(raw_payload)
+                if der_bytes is not None:
+                    tls_sessions[session_key]["certificate_der"] = der_bytes
 
     # Done walking packets, now turn everything tracked into findings       
     all_findings = []
@@ -496,6 +546,9 @@ def analyse_pcap(pcap_filepath):
         if algorithm is None or algorithm == "Unknown":  # Skip this session
             continue
 
+        # Resolve the key size through the three-tier fallback system
+        key_size, key_size_source = get_key_size_with_fallback(session["certificate_der"], algorithm, session["server_ip"], session["server_port"])
+
         # Build the finding dictionary, same as what certificate_analyser produces
         # so it drops straight into the risk engine
         finding = {
@@ -503,10 +556,10 @@ def analyse_pcap(pcap_filepath):
             "client_ip"        : session["client_ip"],
             "algorithm"        : algorithm,
             "cipher_suite"     : suite_name,
-            "key_size"         : None,
+            "key_size"         : key_size,
             "vulnerable"       : is_vulnerable,
-            "issuer"           : "N/A - PCAP analysis",
-            "expires"          : "N/A - PCAP analysis",
+            "issuer"           : None,  # Not available from PCAP
+            "expires"          : None,  # Not available from PCAP
             "has_server_hello" : session["has_server_hello"],
             "source"           : "pcap_handshake"        
         }
@@ -542,11 +595,10 @@ def check_if_tls_handshake(raw_tcp_payload):
     record_data = raw_tcp_payload[5:5+record_length]
 
     handshake_type = record_data[0]
-    # 1 is Client Hello, 2 is Server Hello
-    if handshake_type not in (0x01, 0x02):
+    # 0x01 is Client Hello, 0x02 is Server Hello, 0x0B is Certificate
+    if handshake_type not in (0x01, 0x02, 0x0B):
         return False, None, None
     
-
     # All checks passes, this is a TLS handshake
     return True, handshake_type, record_data
 
