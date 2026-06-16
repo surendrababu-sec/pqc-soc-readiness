@@ -141,7 +141,7 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
 
     # Output path
     output_folder = Path(__file__).parent/"output"
-    output_folder.mkdir(exist_ok=True) # Create the outputfoler if it doesn't exist.
+    output_folder.mkdir(exist_ok=True) # Create the output folder if it doesn't exist.
     full_output_path = output_folder/filename
 
     # Build the metadata section
@@ -313,7 +313,8 @@ if __name__ == "__main__":
                         data_sensitivity=arguments.sensitivity,
                         data_lifetime=arguments.lifetime,
                         exposure_surface=arguments.exposure,
-                        usage="key_exchange"
+                        usage="key_exchange",
+                        key_size_source = finding["key_size_source"]
                     )
                     all_risks.append(risk)
 

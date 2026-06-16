@@ -5,7 +5,11 @@ import socket
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from pathlib import Path
-from scapy.all import rdpcap, IP, TCP
+
+import logging
+logging.getLogger("scapy").setLevel(logging.ERROR)
+from scapy.utils import rdpcap
+from scapy.layers.inet import IP, TCP
 
 # Path to knowledge folder
 knowledge_folder = Path(__file__).parent.parent/ "knowledge"
@@ -557,6 +561,7 @@ def analyse_pcap(pcap_filepath):
             "algorithm"        : algorithm,
             "cipher_suite"     : suite_name,
             "key_size"         : key_size,
+            "key_size_source"  : key_size_source,
             "vulnerable"       : is_vulnerable,
             "issuer"           : None,  # Not available from PCAP
             "expires"          : None,  # Not available from PCAP

@@ -31,6 +31,7 @@ class RiskFinding(BaseModel):
     nist_standard: str
     migration_advice: str
     rationale: str
+    key_size_source: str = "certificate" # where the key size came from
 
 
 # Figures out how urgently the detected algorithm needs to be replaced.
@@ -52,7 +53,7 @@ def get_algorithm_risk_score(algorithm, key_size):
     # ECC - same idea,smaller curves are more at risk
     if "ECC" in algorithm:
         if key_size and key_size < 256:
-            return 3    # small curver, act immediately
+            return 3    # small curve, act immediately
         if key_size and key_size == 256:
             return 2    # standard ECC, medium urgency
         return 1        # larger curve, still vulnerable but low urgency
@@ -92,7 +93,7 @@ def calculate_exposure_score(algorithm, key_size, data_sensitivity=2, data_lifet
         + scoring_weights["exposure_surface"] * max_values["exposure_surface"]    
     )
 
-    # Covert to a 0-100 scale and round to 2 decimal places
+    # Convert to a 0-100 scale and round to 2 decimal places
     final_score = round((raw_score / max_possible_score) * 100, 2)
 
     return final_score
@@ -117,7 +118,7 @@ def get_nist_recommendation(algorithm, usage="signature"):
     elif "ECC+ML-KEM" in algorithm:
         # Hybrid post-quantum, classical curve combined with ML-KEM.
         # Also catches "ECC+ML-KEM (obsolete)"
-        mapping_key = f"ECC_hybrid"
+        mapping_key = "ECC_hybrid"
     elif "ECC" in algorithm:
         mapping_key = f"ECC_{usage}"
     elif "DSA" in algorithm:
@@ -139,7 +140,7 @@ def get_nist_recommendation(algorithm, usage="signature"):
 
 
 # Ties everything together and returns one complete finding.
-def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature"):
+def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature", key_size_source="certificate"):
 
     # Step 1: Calculate the full HNDL exposure score
     score = calculate_exposure_score(algorithm, key_size, data_sensitivity, data_lifetime, exposure_surface)
@@ -153,29 +154,42 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
     # Step 4: Build the rationale explaining why this score was given
     if "Unknown" in algorithm:
         rationale = (
-            f"Algorithm could not be identified, manual review required. "
-            f"Score is based on a precautionary medium-risk assumption. "
+            "Algorithm could not be identified, manual review required. "
+            "Score is based on a precautionary medium-risk assumption. "
             f"HNDL exposure score: {score}/100 ({severity})."
         )
     elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
         rationale = (
             f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
-            f"No harvest-now-decrypt-later exposure detected for this endpoint. "
+            "No harvest-now-decrypt-later exposure detected for this endpoint. "
             f"HNDL exposure score: {score}/100 ({severity})."
         )
     else:
         rationale = (
             f"{algorithm} is vulnerable to Shor's algorithm under the HNDL threat model. "
-            f"Data harvested today can be decrypted when quantum computers arrive. "
+            "Data harvested today can be decrypted when quantum computers arrive. "
             f"HNDL exposure score: {score}/100 ({severity})."
-     )
+        )
 
-    # Step 5: Pakage everything into a structured RiskFinding and return it.
+        # Append a source note for PCAP findings where key size was estimated
+        if key_size_source == "modal_baseline":
+            rationale += (
+                " Key size not available from this capture - score assumes modal "
+                "deployment baseline (RSA-2048 / ECC P-256 per Cloudflare Radar 2024)."
+            )
+        elif key_size_source == "live_fetch":
+            rationale += (
+                " Key size sourced from a live certificate fetch at time of analysis - "
+                "may differ from the key size active during the original capture."
+            )
+
+    # Step 5: Package everything into a structured RiskFinding and return it.
     return RiskFinding(
         algorithm=algorithm,
         score=score,
         severity=severity,
         nist_standard=nist_standard,
         migration_advice=migration_advice,
-        rationale=rationale
+        rationale=rationale,
+        key_size_source=key_size_source
     )
