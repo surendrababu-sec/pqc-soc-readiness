@@ -1,8 +1,8 @@
 # PQC-SOC Readiness Scanner
 # This is where everything starts. 
 # The scanner connects to a target, grabs its TLS certificate, checks what cryptographic algorithms it's using, and flags anything that won't survive a quantum computer.
-# Built on the HNDL threat model, the attack is already happening.
-# Author: Surendra Babu
+# Built on the HNDL and quantum authentication forgery threat models.
+# Author: Surendra Babu Chilakaluru
 
 import socket
 import argparse
@@ -38,7 +38,7 @@ def display_results(target, findings, risk):
     results_table.add_column("Vulnerable")
     results_table.add_column("Issuer")
     results_table.add_column("Expires")
-    results_table.add_column("HNDL Score")
+    results_table.add_column("Quantum Exposure Score")
     results_table.add_column("Severity")
     results_table.add_column("NIST Standard")
 
@@ -88,7 +88,7 @@ def display_pcap_results(all_findings, all_risks):
     results_table.add_column("Client IP")
     results_table.add_column("Algorithm")
     results_table.add_column("Cipher Suite")
-    results_table.add_column("HNDL Score")
+    results_table.add_column("Quantum Exposure Score")
     results_table.add_column("Severity")
     results_table.add_column("NIST Standard")
     results_table.add_column("Server Hello")
@@ -148,7 +148,7 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
     scan_metadata = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "scanner_version": "0.1",
-        "threat_model": "HNDL - Harvest Now, Decrypt Later",
+        "threat_model": "HNDL (Harvest Now, Decrypt Later) and quantum authentication forgery",
         "context_settings": {
             "data_sensitivity": arguments.sensitivity,
             "data_lifetime": arguments.lifetime,
@@ -255,7 +255,8 @@ if __name__ == "__main__":
                 "vulnerable": findings["vulnerable"],
                 "issuer": findings["issuer"],
                 "expires": findings["expires"],
-                "hndl_score": risk.score,
+                "quantum_exposure_score": risk.score,
+                "threat_category": risk.threat_category,
                 "severity": risk.severity,
                 "nist_standard": risk.nist_standard,
                 "migration_advice": risk.migration_advice,
@@ -301,7 +302,7 @@ if __name__ == "__main__":
                 console.print("[yellow]Make sure the file contains TLS traffic and try again.[/yellow]")
 
             else:
-                console.print("[bold cyan]Evaluating HNDL exposure for each session...[/bold cyan]")
+                console.print("[bold cyan]Evaluating quantum exposure for each session...[/bold cyan]")
 
                 # Score each finding through the risk engine.
                 # These came from handshakes not certificates, so key_exchange is the right usage.
@@ -339,11 +340,12 @@ if __name__ == "__main__":
                     for finding, risk in zip(pcap_findings, all_risks):
                         # Copy the finding dictionary
                         enriched = dict(finding)
-                        enriched["hndl_score"]       = risk.score
-                        enriched["severity"]         = risk.severity
-                        enriched["nist_standard"]    = risk.nist_standard
-                        enriched["migration_advice"] = risk.migration_advice
-                        enriched["rationale"]        = risk.rationale
+                        enriched["quantum_exposure_score"] = risk.score
+                        enriched["threat_category"]        = risk.threat_category
+                        enriched["severity"]               = risk.severity
+                        enriched["nist_standard"]          = risk.nist_standard
+                        enriched["migration_advice"]       = risk.migration_advice
+                        enriched["rationale"]              = risk.rationale
                         enriched_findings.append(enriched)
 
                     save_json_report(arguments.output, enriched_findings, arguments, total_in_file=total_sessions)

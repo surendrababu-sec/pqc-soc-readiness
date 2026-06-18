@@ -91,7 +91,7 @@ def load_cipher_suites():
                 is_vulnerable = True
 
             else:
-                # Kerberos, PSK, SRP, GOST, NULL - not relevant to HNDL
+                # Kerberos, PSK, SRP, GOST, NULL - not relevant to quantum vulnerability assessment
                 key_exchange   = "Unknown"
                 is_vulnerable  = None
 

@@ -32,6 +32,7 @@ class RiskFinding(BaseModel):
     migration_advice: str
     rationale: str
     key_size_source: str = "certificate" # where the key size came from
+    threat_category: str = "confidentiality_harvest" # confidentiality_harvest = key exchange risk, signature_forgery = certificate forgery risk 
 
 
 # Figures out how urgently the detected algorithm needs to be replaced.
@@ -58,6 +59,14 @@ def get_algorithm_risk_score(algorithm, key_size):
             return 2    # standard ECC, medium urgency
         return 1        # larger curve, still vulnerable but low urgency
     
+    # EdDSA - structurally an elliptic curve scheme, scored the same way as ECC
+    if "EdDSA" in algorithm:
+        if key_size and key_size < 256:
+            return 3    
+        if key_size and key_size == 256:
+            return 2    # Ed25519 sits here
+        return 1        # Ed448 sits here
+
     # DSA and DH are both quantum vulnerable, medium urgency
     if "DSA" in algorithm or "DH" in algorithm:
         return 2
@@ -121,6 +130,9 @@ def get_nist_recommendation(algorithm, usage="signature"):
         mapping_key = "ECC_hybrid"
     elif "ECC" in algorithm:
         mapping_key = f"ECC_{usage}"
+    elif "EdDSA" in algorithm:
+        # Checked before DSA, since "DSA" is a substring of "EdDSA"
+        mapping_key = "EdDSA_signature"
     elif "DSA" in algorithm:
         mapping_key = "DSA_signature"
     elif "DH" in algorithm:
@@ -156,20 +168,31 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         rationale = (
             "Algorithm could not be identified, manual review required. "
             "Score is based on a precautionary medium-risk assumption. "
-            f"HNDL exposure score: {score}/100 ({severity})."
+            f"Quantum exposure score: {score}/100 ({severity})."
         )
     elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
         rationale = (
             f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
-            "No harvest-now-decrypt-later exposure detected for this endpoint. "
-            f"HNDL exposure score: {score}/100 ({severity})."
+            "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
+            f"Quantum exposure score: {score}/100 ({severity})."
         )
     else:
-        rationale = (
-            f"{algorithm} is vulnerable to Shor's algorithm under the HNDL threat model. "
-            "Data harvested today can be decrypted when quantum computers arrive. "
-            f"HNDL exposure score: {score}/100 ({severity})."
-        )
+        if usage == "key_exchange":
+            # Confidentiality risk - session keys captured today are retroactively decryptable once a quantum computer exists
+            rationale = (
+                f"{algorithm} is vulnerable to Shor's algorithm under the HNDL threat model. "
+                "Session keys derived from this key exchange are at risk of retroactive decryption - "
+                "traffic captured today can be decrypted once a sufficiently powerful quantum computer exists. "
+                f"Quantum exposure score: {score}/100 ({severity})."
+            )
+        else:
+            # Authentication risk - a quantum computer can break the signature scheme and forge certificates going forward, enabling impersonation
+            rationale = (
+                f"{algorithm} is vulnerable to Shor's algorithm. "
+                "A quantum computer capable of breaking this signature scheme could forge certificates "
+                "and impersonate this endpoint - this is a forward-looking authentication risk. "
+                f"Quantum exposure score: {score}/100 ({severity})."
+            )
 
         # Append a source note for PCAP findings where key size was estimated
         if key_size_source == "modal_baseline":
@@ -191,5 +214,6 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         nist_standard=nist_standard,
         migration_advice=migration_advice,
         rationale=rationale,
-        key_size_source=key_size_source
+        key_size_source=key_size_source,
+        threat_category="confidentiality_harvest" if usage == "key_exchange" else "signature_forgery"
     )

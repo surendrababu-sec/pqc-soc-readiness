@@ -7,7 +7,7 @@ import ssl
 import socket
 import os
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh, ed25519, ed448
 from modules.risk_engine import evaluate_risk
 
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
@@ -68,9 +68,20 @@ def analyse_certificate(certificate):
         findings["key_size"] = key.key_size
         findings["vulnerable"] = True
 
+    elif isinstance(key, ed25519.Ed25519PublicKey):
+        # Ed25519 has no key_size property, its size is fixed by the algorithm itself
+        findings["algorithm"] = "EdDSA (Ed25519)"
+        findings["key_size"] = 256
+        findings["vulnerable"] = True
+
+    elif isinstance(key, ed448.Ed448PublicKey):
+        findings["algorithm"] = "EdDSA (Ed448)"
+        findings["key_size"] = 448
+        findings["vulnerable"] = True
+
     # If it's neither of the above algorithms, we don't know what it is yet
     else:
-        findings["algorithm"] = "Unknown- further analysis needed"
+        findings["algorithm"] = "Unknown - further analysis needed"
         findings["key_size"] = None
         findings["vulnerable"] = None
 
@@ -119,7 +130,7 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
 
             # Run the risk engine to score and get NIST recommendations
             console.print("Evaluating risk...", style="bold cyan")
-            risk = evaluate_risk(findings["algorithm"], findings["key_size"])
+            risk = evaluate_risk(findings["algorithm"], findings["key_size"], data_sensitivity=data_sensitivity, data_lifetime=data_lifetime, exposure_surface=exposure_surface)
 
             # Display the results for this domain
             display_function(domain, findings, risk)
@@ -132,7 +143,8 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
                 "vulnerable": findings["vulnerable"],
                 "issuer": findings["issuer"],
                 "expires": findings["expires"],
-                "hndl_score": risk.score,
+                "quantum_exposure_score": risk.score,
+                "threat_category": risk.threat_category,
                 "severity": risk.severity,
                 "nist_standard": risk.nist_standard,
                 "migration_advice": risk.migration_advice,
