@@ -4,11 +4,11 @@
  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Phase 3 Complete](https://img.shields.io/badge/phase%203-PCAP%20analysis%20complete-brightgreen.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
+[![Phase 3: PCAP Complete](https://img.shields.io/badge/phase%203-PCAP%20analysis%20complete-brightgreen.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 [![NIST PQC](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-darkgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
-[![Threat Model: HNDL](https://img.shields.io/badge/threat%20model-HNDL-red.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
+[![Threat Model: HNDL + Forgery](https://img.shields.io/badge/threat%20model-HNDL%20%2B%20Forgery-red.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 
-An independent research project and open-source Python tool auditing organisations' public facing TLS endpoints and network captures for quantum-vulnerable cryptography under the Harvest-Now, Decrypt-Later (HNDL) threat model.
+An independent research project and open-source Python tool auditing organisations' public-facing TLS endpoints and network captures for quantum-vulnerable cryptography. The scanner measures two distinct quantum threats - Harvest-Now, Decrypt-Later (HNDL) on the confidentiality side, and authentication forgery exposure on the certificate side - and scores each one against its own threat model.
  
 The scanner is built on a structured independent study of post-quantum cryptography - every output traces back to a specific NIST standard, a documented threat, and a weighted risk score the analyst can interrogate.
  
@@ -27,7 +27,7 @@ The scanner is built on a structured independent study of post-quantum cryptogra
 - [The Problem](#the-problem)
 - [What This Does](#what-this-does)
 - [How It Works](#how-it-works)
-- [The HNDL Exposure Scoring Model](#the-hndl-exposure-scoring-model)
+- [The Quantum Exposure Scoring Model](#the-quantum-exposure-scoring-model)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Sample Output](#sample-output)
@@ -46,11 +46,13 @@ The scanner is built on a structured independent study of post-quantum cryptogra
  
 Most organisations assume their encryption is secure. It isn't - not against what's coming.
  
-The cryptography protecting healthcare records, financial transactions, government communications, and critical infrastructure today relies on mathematical problems - integer factorisation (RSA) and the discrete logarithm (ECC) — that a sufficiently powerful quantum computer will solve using Shor's algorithm. Nation-state adversaries are already harvesting encrypted traffic today, archiving it for the day quantum capability arrives. For data with long-term sensitivity, the compromise is **already happening** - silently - even though the decryption hasn't yet.
+The cryptography protecting healthcare records, financial transactions, government communications, and critical infrastructure today relies on mathematical problems - integer factorisation (RSA) and the discrete logarithm (ECC) - that a sufficiently powerful quantum computer will solve using Shor's algorithm. Nation-state adversaries are already harvesting encrypted traffic today, archiving it for the day quantum capability arrives. For data with long-term sensitivity, the compromise is **already happening** - silently - even though the decryption hasn't yet.
  
 NIST finalised the post-quantum replacements in 2024 (FIPS 203, 204, 205). Migration must begin now. But organisations cannot migrate what they cannot see. Most have no inventory of where their quantum-vulnerable cryptography lives.
  
 **This project is the diagnostic instrument for that migration.**
+
+Two distinct quantum threats are in scope: HNDL, which threatens confidentiality, and authentication forgery, which threatens trust in the certificate chain itself. The scanner measures and scores both.
  
 ### Threat Model: HNDL
  
@@ -62,16 +64,29 @@ NIST finalised the post-quantum replacements in 2024 (FIPS 203, 204, 205). Migra
 | Mitigation requires **migration**, not just monitoring | Defenders cannot retroactively unencrypt what is already harvested |
  
 HNDL inverts the usual security calculus: the longer the data's sensitivity lifetime, the more urgent the migration - even if Q-Day itself is years away.
- 
+
+### Threat Model: Authentication Forgery
+
+A certificate's public key is not secret - it is broadcast on every handshake and logged permanently in Certificate Transparency. There is nothing to harvest, because nothing is hidden. What breaks once a quantum computer can solve the underlying problem is the ability to forge new signatures from that public key - impersonating the server going forward.
+
+| Property | HNDL (confidentiality) | Authentication forgery |
+|----------|------------------------|-------------------------|
+| What's at risk | Past session keys | Future signatures |
+| Attack timing | Retroactive | Prospective |
+| Requires harvesting today? | Yes | No - the public key is already public |
+| Where it shows up | Key exchange (ECDHE, RSA key transport, DH) | Certificates (ECDSA, RSA, DSA, EdDSA signatures) |
+
+The scanner scores both threats using the same four-factor model, but labels each finding with the threat it actually represents - confidentiality risk for key exchange findings, authentication risk for certificate findings - so the migration advice and rationale never conflate the two.
+
 ---
  
 ## What This Does
  
 The scanner operates in two complementary modes:
  
-**Certificate mode** - connects to a live TLS endpoint, pulls its certificate, identifies the algorithm and key size, scores the HNDL exposure, and recommends the migration path. Results appear immediately in the terminal with colour-coded severity, and can be saved as SIEM-ready JSON.
+**Certificate mode** - connects to a live TLS endpoint, pulls its certificate, identifies the algorithm and key size, scores the quantum exposure under the authentication forgery threat, and recommends the migration path. Results appear immediately in the terminal with colour-coded severity, and can be saved as SIEM-ready JSON.
  
-**PCAP mode** - reads a network capture file, reconstructs TLS handshake sessions from the packets, identifies which cipher suites and key exchange groups were negotiated, and produces the same HNDL-scored findings - without touching any live system. This makes passive analysis of internal networks possible without any disruption.
+**PCAP mode** - reads a network capture file, reconstructs TLS handshake sessions from the packets, identifies which cipher suites and key exchange groups were negotiated, and scores each finding under the HNDL confidentiality threat. Analysis runs on the capture file itself; if a certificate isn't present in the capture, the scanner may attempt a brief live connection to resolve the exact key size - unreachable or internal addresses are skipped automatically and the scanner falls back to a documented baseline instead.
  
 Both modes produce the same output structure: a colour-coded CLI table, algorithm-specific migration advice, and optionally a timestamped JSON report.
  
@@ -91,8 +106,8 @@ Both modes produce the same output structure: a colour-coded CLI table, algorith
 └─────────────────────────────┬────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  HNDL RISK ENGINE                                            │
-│  HNDL scoring  ·  NIST mapping  ·  Migration advice          │
+│  QUANTUM RISK ENGINE                                         │
+│  Quantum exposure score  ·  Threat category  ·  NIST mapping │
 └─────────────────────────────┬────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -101,18 +116,20 @@ Both modes produce the same output structure: a colour-coded CLI table, algorith
 └──────────────────────────────────────────────────────────────┘
 ```
  
-**Detection targets:** RSA, ECC, DH, DSA - and identification of already-deployed PQC (ML-KEM, ML-DSA, SLH-DSA) and hybrid groups (X25519+ML-KEM).
+**Detection targets:** RSA, ECC, DH, DSA, EdDSA - and identification of already-deployed PQC (ML-KEM, ML-DSA, SLH-DSA) and hybrid groups (X25519+ML-KEM).
  
 **Recommendation targets:** FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA), with hybrid mode guidance during the transition period.
  
 ---
  
-## The HNDL Exposure Scoring Model
+## The Quantum Exposure Scoring Model
  
-This is the original research contribution at the heart of the scanner. Rather than a binary vulnerable/not-vulnerable flag, each finding receives a weighted exposure score that reflects the urgency of migration in context.
+This is the original research contribution at the heart of the scanner. Rather than a binary vulnerable/not-vulnerable flag, each finding receives a weighted exposure score that reflects the urgency of migration in context. The same four-factor model scores both quantum threats - confidentiality and authentication forgery. The formula itself is identical for both threats. What changes is the label attached to each finding - confidentiality risk for key exchange findings, authentication risk for certificate findings and that label is what determines how the score should be read.
+
+This model is original methodology developed specifically for this project. There is no existing standard for scoring HNDL or authentication forgery exposure the way CVSS scores general vulnerability severity - CVSS is the closest structural analog, in that both combine a base technical factor with contextual modifiers into a single comparable number. The full derivation and validation of this model will be formalised in the forthcoming arXiv preprint.
  
 ```
-HNDL Exposure Score =
+Quantum Exposure Score =
  
   [ (0.4 × algorithm_risk) + (0.2 × data_sensitivity) + (0.2 × data_lifetime) + (0.2 × exposure_surface) ]
   ────────────────────────────────────────────────────────────────────────────────────────────────────────  × 100
@@ -129,10 +146,12 @@ HNDL Exposure Score =
 | ECC | < 256 bits | 3 | Small curve - act immediately |
 | ECC | 256 bits | 2 | P-256 standard - medium urgency |
 | ECC | > 256 bits | 1 | Larger curve - still vulnerable, lower urgency |
+| EdDSA (Ed25519) | 256 bits | 2 | Elliptic-curve based, same urgency as standard ECC |
+| EdDSA (Ed448) | 448 bits | 1 | Larger curve, still vulnerable, lower urgency |
 | DH / DSA | - | 2 | Quantum vulnerable - medium urgency |
 | ML-KEM / ML-DSA / SLH-DSA | - | 0 | Already post-quantum safe |
  
-**Context factors** — each rated 1 (low) to 3 (high):
+**Context factors** - each rated 1 (low) to 3 (high):
  
 | Factor | 1 | 2 | 3 |
 |--------|---|---|---|
@@ -188,7 +207,7 @@ python scanner/main.py google.com
  
 ### Scan with a custom risk context
  
-When you know the sensitivity of the data or the exposure of the endpoint, tell the scanner - it adjusts the HNDL score accordingly:
+When you know the sensitivity of the data or the exposure of the endpoint, tell the scanner - it adjusts the Quantum exposure score accordingly:
  
 ```bash
 python scanner/main.py nhs.uk --sensitivity 3 --lifetime 3 --exposure 3
@@ -214,7 +233,7 @@ python scanner/main.py --targets scanner/targets.txt
  
 ### PCAP handshake analysis
  
-Analyse a network capture file without connecting to any live system:
+Analyse a network capture file passively - the scanner reads from the file first, and only attempts a brief live connection if the capture doesn't include a certificate, in order to resolve the exact key size:
  
 ```bash
 python scanner/main.py --pcap capture.pcap
@@ -250,16 +269,16 @@ python scanner/main.py --help
 ╭─────────────────────────────────────────────────────────────╮
 │ PQC-SOC Readiness Scanner - Target: google.com              │
 ╰─────────────────────────────────────────────────────────────╯
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
-┃ Target          ┃ Algorithm       ┃ Key Size      ┃ Vulnerable               ┃ Issuer                                             ┃ Expires       ┃ HNDL Score ┃ Severity ┃ NIST Standard     ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
-│ google.com      │ ECC (secp256r1) │ 256 bits      │ YES - Quantum Vulnerable │ CN=WR2,O=Google Trust Services,C=US                │ 30 Jul 2026   │ 66.67      │ HIGH     │ FIPS 204 (ML-DSA) │
-└─────────────────┴─────────────────┴───────────────┴──────────────────────────┴────────────────────────────────────────────────────┴───────────────┴────────────┴──────────┴───────────────────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Target          ┃ Algorithm       ┃ Key Size      ┃ Vulnerable               ┃ Issuer                                 ┃ Expires       ┃ Quantum Exposure Score ┃ Severity ┃ NIST Standard     ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ google.com      │ ECC (secp256r1) │ 256 bits      │ YES - Quantum Vulnerable │ CN=WR2,O=Google Trust Services,C=US    │ 30 Jul 2026   │ 66.67                  │ HIGH     │ FIPS 204 (ML-DSA) │
+└─────────────────┴─────────────────┴───────────────┴──────────────────────────┴────────────────────────────────────────┴───────────────┴────────────────────────┴──────────┴───────────────────┘
 ╭────────────────────────────────────────────────────── Migration Advice ───────────────────────────────────────────────────────╮
 │ Migrate certificate signatures from ECDSA to ML-DSA-65 (FIPS 204) - the post-quantum equivalent at the P-256 security level.  │
 │ Note the operational impact: ML-DSA-65 signatures are approximately 50 times larger than ECDSA P-256 (3,309 versus 64 bytes), │
 │ with corresponding handshake overhead. Deploy in hybrid mode during transition. For environments requiring conservative       │
-│ assurance based on hash function security rather than lattice hardness, SLH-DSA (FIPS 205) is the approved alternative.       │                                                      
+│ assurance based on hash function security rather than lattice hardness, SLH-DSA (FIPS 205) is the approved alternative.       │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
  
@@ -269,14 +288,14 @@ python scanner/main.py --help
 ╭────────────────────────────────────────────────────────────────────────────╮
 │ PQC-SOC Readiness Scanner - PCAP Handshake Analysis                        │
 ╰────────────────────────────────────────────────────────────────────────────╯
-┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Server Endpoint        ┃ Client IP                ┃ Algorithm        ┃ Cipher Suite                             ┃ HNDL Score        ┃ Severity       ┃ NIST Standard                ┃ Server Hello                       ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ 10.100.109.133:3389    │ 10.128.2.74              │ RSA              │ TLS_RSA_WITH_AES_256_GCM_SHA384          │ 53.33             │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                                │
-│ 10.100.117.5:3389      │ 10.128.1.233             │ ECC              │ TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384    │ 53.33             │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                                │
-│ 192.168.220.44:6443    │ 192.168.220.45           │ ECC              │ TLS 1.3 with ECC                         │ 53.33             │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                                │
-│ ... 36 more sessions   │                          │                  │                                          │                   │                │                              │                                    │
-└────────────────────────┴──────────────────────────┴──────────────────┴──────────────────────────────────────────┴───────────────────┴────────────────┴──────────────────────────────┴────────────────────────────────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Server Endpoint        ┃ Client IP                ┃ Algorithm        ┃ Cipher Suite                             ┃ Quantum Exposure Score ┃ Severity       ┃ NIST Standard                ┃ Server Hello                  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 10.100.109.133:3389    │ 10.128.2.74              │ RSA              │ TLS_RSA_WITH_AES_256_GCM_SHA384          │ 66.67                  │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                           │
+│ 10.100.117.5:3389      │ 10.128.1.233             │ ECC              │ TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384    │ 66.67                  │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                           │
+│ 192.168.220.44:6443    │ 192.168.220.45           │ ECC              │ TLS 1.3 with ECC                         │ 66.67                  │ HIGH           │ FIPS 203 (ML-KEM)            │ Yes                           │
+│ ... 36 more sessions   │                          │                  │                                          │                        │                │                              │                               │
+└────────────────────────┴──────────────────────────┴──────────────────┴──────────────────────────────────────────┴────────────────────────┴────────────────┴──────────────────────────────┴───────────────────────────────┘
 ╭──────────────────────────────────────── Migration Advice - ECC ─────────────────────────────────────────╮
 │ Migrate key exchange from ECDH to ML-KEM-768 (FIPS 203). Deploy in hybrid mode alongside X25519 during  │
 │ transition, this is the X25519MLKEM768 pattern already in production at Google and Cloudflare since     │
@@ -291,10 +310,11 @@ python scanner/main.py --help
 │ decryptable once a sufficiently powerful quantum computer exists, this endpoint is directly exposed to  │
 │ the harvest-now-decrypt-later threat.                                                                   │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────╯
- 
+
 Sessions analysed  : 39
 Vulnerable         : 39
-Safe or hybrid     : 0
+Hybrid PQC         : 0
+Post-quantum safe  : 0
 Unknown            : 0
 ```
  
@@ -304,7 +324,7 @@ Unknown            : 0
  
 ## Research Foundation
  
-The scanner is built on a structured independent study of the mathematical foundations of post-quantum cryptography. The detection and scoring logic is original, the tool uses standard libraries for certificate parsing and packet reading, but the HNDL scoring model, algorithm classification, and migration guidance are written from scratch and grounded in this research.
+The scanner is built on a structured independent study of the mathematical foundations of post-quantum cryptography. The detection and scoring logic is original, the tool uses standard libraries for certificate parsing and packet reading, but the quantum exposure scoring model, algorithm classification, and migration guidance are written from scratch and grounded in this research.
  
 **Lattice-based cryptography**
 
@@ -355,19 +375,21 @@ Honesty matters more than ambition. Here is exactly where this project stands to
  
 | Component | State |
 |-----------|-------|
-| HNDL threat model and scoring model | ✅ Complete |
+| HNDL threat model formalisation | ✅ Complete |
 | Mathematical foundations - CRYSTALS-Kyber (ML-KEM) | ✅ Complete |
 | Mathematical foundations - CRYSTALS-Dilithium (ML-DSA) | ✅ Complete |
 | NIST FIPS 203/204/205 study | ✅ Complete |
 | Scanner architecture and design | ✅ Complete |
-| TLS certificate detection - RSA, ECC, DSA, DH | ✅ Complete |
+| TLS certificate detection - RSA, ECC, DSA, DH, EdDSA | ✅ Complete |
 | Multiple target scanning from file | ✅ Complete |
-| HNDL exposure scoring engine | ✅ Complete - weighted 0-100 with configurable rubric |
+| Quantum exposure scoring engine | ✅ Complete - weighted 0-100 with configurable rubric |
 | NIST migration recommendation engine | ✅ Complete - FIPS 203/204/205 mapped |
 | Configurable risk context flags | ✅ Complete |
 | JSON export for SIEM integration | ✅ Complete |
 | PCAP handshake analysis | ✅ Complete |
 | Detection of hybrid PQC groups (X25519+ML-KEM, pure ML-KEM) | ✅ Complete |
+| Hybrid PQC adoption reported as its own category | ✅ Complete |
+| Dual quantum threat taxonomy (confidentiality vs authentication) | ✅ Complete |
 | CEF output format | ⏳ Planned - Phase 3 |
 | arXiv manuscript | 🟡 In preparation |
  
@@ -382,7 +404,7 @@ pqc-soc-readiness/
 ├── scanner/
 │   ├── modules/
 │   │   ├── certificate_analyser.py   # TLS certificate detection and parsing
-│   │   ├── risk_engine.py            # HNDL scoring engine and NIST recommendations
+│   │   ├── risk_engine.py            # Quantum exposure scoring engine and NIST recommendations
 │   │   └── pcap_analyser.py          # PCAP handshake analysis - Phase 3
 │   ├── knowledge/
 │   │   ├── hndl_rubric.yaml          # Scoring weights and max values - auditable
@@ -423,7 +445,7 @@ This project is structured as a 10-month independent research programme. Current
 
 - TLS endpoint probing and certificate analysis
 - Multiple target scanning from file
-- HNDL exposure scoring engine
+- Quantum exposure scoring engine
 - NIST migration recommendation engine
 - Configurable risk context flags
 - JSON export for SIEM integration
@@ -432,6 +454,7 @@ This project is structured as a 10-month independent research programme. Current
 
 - PCAP-based handshake analysis ✅
 - Detection of hybrid PQC groups (X25519+ML-KEM, pure ML-KEM) ✅
+- Dual quantum threat taxonomy - confidentiality vs authentication forgery ✅
 - SIEM-ready CEF output format ⏳
 - JSON report enhancements ⏳
 - Documentation pass ⏳
@@ -445,13 +468,13 @@ This project is structured as a 10-month independent research programme. Current
  
 ## Manuscript
  
-> **PQC-SOC Readiness: Auditing Organisations' Public-Facing TLS Endpoints and Network Captures for Quantum-Vulnerable Cryptography Under the HNDL Threat Model**
+> **PQC-SOC Readiness: Auditing Organisations' Public-Facing TLS Endpoints and Network Captures for Quantum-Vulnerable Cryptography Under the HNDL and Authentication Forgery Threat Models**
 >
 > Surendra Babu Chilakaluru
 >
 > *Manuscript in preparation. Target: arXiv cs.CR, 2026.*
  
-The manuscript will document the HNDL exposure scoring model, the detection methodology across both certificate and PCAP modes, and a structured analysis of quantum-vulnerable cryptography observed across a range of endpoints. The scanner is the empirical instrument; the paper is the research contribution.
+The manuscript will document the quantum exposure scoring model and its dual application to confidentiality and authentication forgery threats, the detection methodology across both certificate and PCAP modes, and a structured analysis of quantum-vulnerable cryptography observed across a range of endpoints. The scanner is the measurement tool; the paper is the research contribution.
  
 ---
  
@@ -463,10 +486,10 @@ Until the manuscript is published, you may cite this repository:
 @misc{surendrababu_pqc_soc_2026,
   author       = {Chilakaluru, Surendra Babu},
   title        = {PQC-SOC Readiness Scanner: Auditing Organisations' Public-Facing TLS Endpoints and Network
-                  Captures for Quantum-Vulnerable Cryptography Under the HNDL Threat Model},
+                  Captures for Quantum-Vulnerable Cryptography Under the HNDL and Authentication Forgery Threat Models},
   year         = {2026},
   howpublished = {\url{https://github.com/surendrababu-sec/pqc-soc-readiness}},
-  note         = {Independent research project and open-source tool - Phase 3 complete, manuscript in preparation}
+  note         = {Independent research project and open-source tool - Phase 3 in progress, manuscript in preparation}
 }
 ```
  
@@ -474,11 +497,11 @@ Until the manuscript is published, you may cite this repository:
  
 ## Contributing
  
-Feedback, issues, and pull requests are welcome - especially on the HNDL scoring model and its weights. If you spot something technically wrong, have a suggestion on the rubric, or are working on NIST PQC migration yourself and want to compare notes, open an issue or start a discussion.
+Feedback, issues, and pull requests are welcome - especially on the quantum exposure scoring model and its weights. If you spot something technically wrong, have a suggestion on the rubric, or are working on NIST PQC migration yourself and want to compare notes, open an issue or start a discussion.
  
 Things that would particularly help:
 - Additional PCAP captures containing PQC or hybrid key exchange sessions for testing
-- Review of the HNDL scoring model weights and their justification
+- Review of the quantum exposure scoring model weights and their justification
 - Feedback on the migration advice entries in `nist_mappings.yaml`
 ---
  
