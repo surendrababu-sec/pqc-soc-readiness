@@ -157,6 +157,8 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
         "total_in_file": total_in_file if total_in_file else len(all_findings),
         "successfully_scanned": len(all_findings),
         "vulnerable_count": sum(1 for finding in all_findings if finding["vulnerable"]),
+        "hybrid_pqc_count": sum(1 for finding in all_findings if finding["vulnerable"] is False and "ECC+ML-KEM" in finding["algorithm"]),
+        "post_quantum_safe_count": sum(1 for finding in all_findings if finding["vulnerable"] is False and "ECC+ML-KEM" not in finding["algorithm"]),
         "failed_count": failed_count
     }
 
@@ -325,13 +327,15 @@ if __name__ == "__main__":
                 # Print a summary at the bottom
                 total_sessions = len(pcap_findings)
                 vulnerable_count = sum(1 for f in pcap_findings if f["vulnerable"] is True)
-                safe_count = sum(1 for f in pcap_findings if f["vulnerable"] is False)
+                hybrid_count = sum(1 for f in pcap_findings if f["vulnerable"] is False and "ECC+ML-KEM" in f["algorithm"])
+                post_quantum_safe_count = sum(1 for f in pcap_findings if f["vulnerable"] is False and "ECC+ML-KEM" not in f["algorithm"])
                 unknown_count = sum(1 for f in pcap_findings if f["vulnerable"] is None)
 
                 console.print(f"\n[bold]Scan complete.[/bold]")
                 console.print(f"Sessions analysed  : {total_sessions}")
                 console.print(f"[bold red]Vulnerable         : {vulnerable_count}[/bold red]")
-                console.print(f"[bold green]Safe or hybrid     : {safe_count}[/bold green]")
+                console.print(f"[cyan]Hybrid PQC         : {hybrid_count}[/cyan]")
+                console.print(f"[bold green]Post-quantum safe  : {post_quantum_safe_count}[/bold green]")
                 console.print(f"[bold yellow]Unknown            : {unknown_count}[/bold yellow]")
 
                 # Save a JSON report if the user asked for one
