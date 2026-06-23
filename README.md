@@ -8,7 +8,7 @@
 [![NIST PQC](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-darkgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
 [![Threat Model: HNDL + Forgery](https://img.shields.io/badge/threat%20model-HNDL%20%2B%20Forgery-red.svg)](https://github.com/surendrababu-sec/pqc-soc-readiness)
 
-An independent research project and open-source Python tool auditing organisations' public-facing TLS endpoints and network captures for quantum-vulnerable cryptography. The scanner measures two distinct quantum threats - Harvest-Now, Decrypt-Later (HNDL) on the confidentiality side, and authentication forgery exposure on the certificate side - and scores each one against its own threat model.
+An independent research project and open-source Python tool auditing organisations' public-facing TLS endpoints and network captures for quantum-vulnerable cryptography. The scanner measures two distinct quantum threats - Harvest-Now, Decrypt-Later (HNDL) on the confidentiality side, and authentication forgery exposure on the certificate side - and scores both using the same model, labelled by the threat each finding actually represents.
  
 The scanner is built on a structured independent study of post-quantum cryptography - every output traces back to a specific NIST standard, a documented threat, and a weighted risk score the analyst can interrogate.
  
@@ -86,7 +86,7 @@ The scanner operates in two complementary modes:
  
 **Certificate mode** - connects to a live TLS endpoint, pulls its certificate, identifies the algorithm and key size, scores the quantum exposure under the authentication forgery threat, and recommends the migration path. Results appear immediately in the terminal with colour-coded severity, and can be saved as SIEM-ready JSON.
  
-**PCAP mode** - reads a network capture file, reconstructs TLS handshake sessions from the packets, identifies which cipher suites and key exchange groups were negotiated, and scores each finding under the HNDL confidentiality threat. Analysis runs on the capture file itself; if a certificate isn't present in the capture, the scanner may attempt a brief live connection to resolve the exact key size - unreachable or internal addresses are skipped automatically and the scanner falls back to a documented baseline instead.
+**PCAP mode** - reads a network capture file, reconstructs TLS handshake sessions from the packets, identifies which cipher suites and key exchange groups were negotiated, and scores each finding under the HNDL confidentiality threat. Analysis runs on the capture file itself; if a certificate isn't present in the capture, the scanner may attempt a brief live connection to resolve the exact key size - unreachable or internal addresses are skipped automatically and the scanner falls back to a documented baseline instead. PCAP mode scores the key exchange layer only - to assess a certificate's own forgery exposure, run certificate mode against the same endpoint directly.
  
 Both modes produce the same output structure: a colour-coded CLI table, algorithm-specific migration advice, and optionally a timestamped JSON report.
  
@@ -207,7 +207,7 @@ python scanner/main.py google.com
  
 ### Scan with a custom risk context
  
-When you know the sensitivity of the data or the exposure of the endpoint, tell the scanner - it adjusts the Quantum exposure score accordingly:
+When you know the sensitivity of the data or the exposure of the endpoint, tell the scanner - it adjusts the quantum exposure score accordingly:
  
 ```bash
 python scanner/main.py nhs.uk --sensitivity 3 --lifetime 3 --exposure 3
@@ -324,7 +324,7 @@ Unknown            : 0
  
 ## Research Foundation
  
-The scanner is built on a structured independent study of the mathematical foundations of post-quantum cryptography. The detection and scoring logic is original, the tool uses standard libraries for certificate parsing and packet reading, but the quantum exposure scoring model, algorithm classification, and migration guidance are written from scratch and grounded in this research.
+The scanner is built on a structured independent study of the mathematical foundations of post-quantum cryptography. The detection and scoring logic is original. The tool uses standard libraries for certificate parsing and packet reading, but the quantum exposure scoring model, algorithm classification, and migration guidance are written from scratch and grounded in this research.
  
 **Lattice-based cryptography**
 
