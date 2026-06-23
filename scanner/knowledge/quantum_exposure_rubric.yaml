@@ -1,4 +1,4 @@
-# HNDL Exposure Scoring Rubric
+# Quantum Exposure Scoring Rubric
 # This file controls how the scanner scores quantum vulnerability.
 # Weights must add up to 1.0 - think of them as percentages.
 # Max values are the highest score each factor can receive.

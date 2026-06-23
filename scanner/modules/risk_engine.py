@@ -10,8 +10,8 @@ from pydantic import BaseModel
 # Build the path to the knowledge folder relative to where this file lives
 knowledge_folder = Path(__file__).parent.parent/ "knowledge"
 
-# Load the scoring rubric - weights and max values for the HNDL score
-with open(knowledge_folder / "hndl_rubric.yaml") as open_file:
+# Load the scoring rubric - weights and max values for the quantum exposure score
+with open(knowledge_folder / "quantum_exposure_rubric.yaml") as open_file:
     scoring_guide = yaml.safe_load(open_file)
 
 scoring_weights = scoring_guide["weights"]
@@ -75,7 +75,7 @@ def get_algorithm_risk_score(algorithm, key_size):
     return 2
 
 
-# Calculates the full HNDL exposure score on a scale of 0 to 100.
+# Calculates the full quantum exposure score on a scale of 0 to 100.
 # Combines the algorithm risk with three context factors, each rated 1 to 3:
 #   data_sensitivity  - how sensitive is the data being protected? (1 = public data, 2 = internal, 3 = highly sensitive)
 #   data_lifetime     - how long must this data stay secret? (1 = months, 2 = years, 3 = decades)
@@ -154,7 +154,7 @@ def get_nist_recommendation(algorithm, usage="signature"):
 # Ties everything together and returns one complete finding.
 def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature", key_size_source="certificate"):
 
-    # Step 1: Calculate the full HNDL exposure score
+    # Step 1: Calculate the full quantum exposure score
     score = calculate_exposure_score(algorithm, key_size, data_sensitivity, data_lifetime, exposure_surface)
 
     # Step 2: Turn the score into a severity label
