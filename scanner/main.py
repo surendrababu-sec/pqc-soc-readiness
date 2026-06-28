@@ -16,6 +16,7 @@ from rich.panel import Panel
 from modules.certificate_analyser import get_certificate, analyse_certificate, scan_from_file
 from modules.risk_engine import evaluate_risk
 from modules.pcap_analyser import analyse_pcap
+from modules.cef_writer import save_cef_report
 
 # Single console instance used throughout for all formatted output.
 console = Console()
@@ -172,7 +173,7 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
     with open(full_output_path, "w") as output_file:
         json.dump(scan_report, output_file, indent=2)
 
-    console.print(f"\n[bold green]Report saved to '{full_output_path}'[/bold green]")
+    console.print(f"\n[bold green]JSON report saved to '{full_output_path}'[/bold green]")
                                              
 
 
@@ -183,12 +184,12 @@ if __name__ == "__main__":
     # Set up the command line interface
     parser = argparse.ArgumentParser(
         description=(
-            "PQC-SOC Readiness Scanner\n"
+        "PQC-SOC Readiness Scanner\n"
         "─────────────────────────────────────────────────────────────\n"
         "Audits TLS for quantum-vulnerable cryptography\n"
-        "(RSA, ECC, DSA, DH) under the Harvest Now, Decrypt Later\n"
-        "(HNDL) threat model.\n\n"
-        "Identifies systems requiring migration to NIST PQC standards:\n"
+        "(RSA, ECC, DSA, DH, EdDSA) under two distinct quantum threats:\n"
+        "HNDL (confidentiality) and authentication forgery (certificates).\n\n"
+        "Identifies and scores systems requiring migration to NIST PQC standards:\n"
         "  FIPS 203 (ML-KEM)  - key encapsulation\n"
         "  FIPS 204 (ML-DSA)  - digital signatures\n"
         "  FIPS 205 (SLH-DSA) - hash-based signatures\n"
@@ -220,8 +221,11 @@ if __name__ == "__main__":
     # How exposed is this endpoint to the outside world?
     parser.add_argument("--exposure", type=int, default=2, choices=[1,2,3], metavar="level", help="Exposure surface - 1=internal only, 2=partner-facing, 3=public internet (default: 2)")
 
-    # Where to save the JSON report -optional, only saves if this flag is provided
+    # Where to save the JSON report - optional, only saves if this flag is provided
     parser.add_argument("--output", metavar="file", help="Save the scan results to a JSON file for SIEM integration (e.g. report.json)")
+
+    # Where to save the CEF report - optional, only saves if this flag is provided
+    parser.add_argument("--cef-output", metavar="file", help="Save the scan results to a CEF file for SIEM integration (e.g. report.cef)")
 
     # Read what the user typed in the command line and store it
     arguments = parser.parse_args()
@@ -281,12 +285,21 @@ if __name__ == "__main__":
         if arguments.output and all_findings:
             save_json_report(arguments.output, all_findings, arguments)
 
+        # CEF is a separate, optional output. Saved independently of JSON
+        if arguments.cef_output and all_findings:
+            saved_path = save_cef_report(arguments.cef_output, all_findings)
+            console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
+
     # --- File of targets mode ---
     elif arguments.targets:
         all_findings, total_in_file, failed_count = scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
 
         if arguments.output and all_findings:
             save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_count=failed_count)
+
+        if arguments.cef_output and all_findings:
+            saved_path = save_cef_report(arguments.cef_output, all_findings)
+            console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
 
     # --- PCAP handshake analysis mode ---
     elif arguments.pcap:
@@ -338,8 +351,9 @@ if __name__ == "__main__":
                 console.print(f"[bold green]Post-quantum safe  : {post_quantum_safe_count}[/bold green]")
                 console.print(f"[bold yellow]Unknown            : {unknown_count}[/bold yellow]")
 
-                # Save a JSON report if the user asked for one
-                if arguments.output:
+                # JSON and CEF both need the scores attached to each finding first,
+                # so this step runs if either one was asked for
+                if arguments.output or arguments.cef_output:
                     enriched_findings = []
                     for finding, risk in zip(pcap_findings, all_risks):
                         # Copy the finding dictionary
@@ -351,8 +365,14 @@ if __name__ == "__main__":
                         enriched["migration_advice"]       = risk.migration_advice
                         enriched["rationale"]              = risk.rationale
                         enriched_findings.append(enriched)
+                    
+                    # JSON and CEF are independent - either, both, or neither can be requested
+                    if arguments.output:
+                        save_json_report(arguments.output, enriched_findings, arguments, total_in_file=total_sessions)
 
-                    save_json_report(arguments.output, enriched_findings, arguments, total_in_file=total_sessions)
+                    if arguments.cef_output:
+                        saved_path = save_cef_report(arguments.cef_output, enriched_findings)
+                        console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
         
         except FileNotFoundError as error:
             console.print(f"\n[bold red]{error}[/bold red]")

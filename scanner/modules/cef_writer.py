@@ -1,3 +1,6 @@
+from pathlib import Path
+from datetime import datetime
+
 # CEF treats backslash and the equals sign as special inside a value, so both need a backslash placed in front of them before the value goes into the line.
 # Backslash has to be escaped first - otherwise the backslash placed in front of the equals sign on the next line would get caught and escaped a second time.
 # Newlines are escaped too, since a real line break would cut the CEF event short.
@@ -42,8 +45,8 @@ def build_cef_event(finding):
         f"target={escape_cef_value(finding.get('target', 'unknown'))}",
         f"algorithm={escape_cef_value(finding.get('algorithm', 'unknown'))}",
         f"score={escape_cef_value(finding.get('quantum_exposure_score', 0))}",
-        f"nist_standard={escape_cef_value(finding.get('nist_standard', 'unknown'))}",
-        f"threat_category={escape_cef_value(finding.get('threat_category', 'unknown'))}",
+        f"threatCategory={escape_cef_value(finding.get('threat_category', 'unknown'))}",
+        f"nistStandard={escape_cef_value(finding.get('nist_standard', 'unknown'))}",
         f"msg={escape_cef_value(finding.get('rationale', ''))}"
     ]
 
@@ -51,4 +54,21 @@ def build_cef_event(finding):
 
     return f"{header}|{extension}"
 
+# Writes one CEF line per finding into a single output file.
+def save_cef_report(filename, all_findings):
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{Path(filename).stem}_{timestamp}.cef"
+
+    # Landing in the same output folder JSON reports already use
+    output_folder = Path(__file__).parent.parent/ "output"
+    output_folder.mkdir(exist_ok=True)
+    full_output_path = output_folder/filename
+
+    with open(full_output_path, "w") as output_file:
+        for finding in all_findings:
+            cef_line = build_cef_event(finding)
+            output_file.write(cef_line + "\n")
+
+    return full_output_path
 
