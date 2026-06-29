@@ -113,7 +113,7 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
     # Keep track of how many targets were scanned and how many were vulnerable
     total_count = len(list_of_domains)
     vulnerable_count = 0
-    failed_count = 0
+    failed_details = [] # one entry per failure - target name and why it failed 
 
     all_findings = [] # Empty list, collects every finding as each target is scanned.
 
@@ -158,17 +158,20 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
         # Target domain  doesn't exist, or can't be found.
         except socket.gaierror:
             console.print(f"\nCould not find '{domain}'. Skipping.", style="bold red", markup=False)
-            failed_count += 1
+            failed_details.append({"target": domain, "reason": "Could not resolve domain"})
 
         # Server took too long to respond
         except TimeoutError:
             console.print(f"\nConnection to '{domain}' timed out. Skipping.", style="bold red", markup=False)
-            failed_count += 1
+            failed_details.append({"target": domain, "reason": "Connection timed out"})
             
         # Anything else that goes wrong
         except Exception as error:
             console.print(f"\nCould not scan '{domain}': {error}", style="bold red", markup=False)
-            failed_count += 1
+            failed_details.append({"target": domain, "reason": str(error)})
+
+    # Turn the failure list back into a plain count.
+    failed_count = len(failed_details)
 
     # Print the summary once all domains have been scanned
     console.print(f"\n[bold white]Scan complete.[/bold white]")
@@ -178,5 +181,5 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
     console.print(f"[bold green]Not vulnerable: {total_count - failed_count - vulnerable_count}[/bold green]")
     console.print(f"[bold yellow]Failed to scan: {failed_count}[/bold yellow]")
 
-    # Return all findings & counts so main.py can save them to a JSON report if needed.
-    return all_findings, total_count, failed_count
+    # Hand everything back so main.py can build the reports
+    return all_findings, total_count, failed_details

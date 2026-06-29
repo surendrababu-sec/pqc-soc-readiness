@@ -132,7 +132,10 @@ def display_pcap_results(all_findings, all_risks):
 
 # Takes everything the scanner found and writes it into a structured JSON file.
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
-def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_count=0):
+def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_details=None):
+
+    # If nothing came in for failed_details, start a fresh empty list
+    failed_details = failed_details or []
 
     # Always use the .json extension for clarity, even if the user forgets to add it.
     # No two scan reports will overwrite each other 
@@ -160,13 +163,14 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
         "vulnerable_count": sum(1 for finding in all_findings if finding["vulnerable"]),
         "hybrid_pqc_count": sum(1 for finding in all_findings if finding["vulnerable"] is False and "ECC+ML-KEM" in finding["algorithm"]),
         "post_quantum_safe_count": sum(1 for finding in all_findings if finding["vulnerable"] is False and "ECC+ML-KEM" not in finding["algorithm"]),
-        "failed_count": failed_count
+        "failed_count": len(failed_details)
     }
 
-    # Bundle the metadata and findings together into one complete report
+    # Bundle the metadata, findings, and failure details together into one complete report
     scan_report = {
         "scan_metadata": scan_metadata,
-        "findings": all_findings
+        "findings": all_findings,
+        "failed_scans": failed_details
     }
 
     # Write the report to the specified file
@@ -292,10 +296,10 @@ if __name__ == "__main__":
 
     # --- File of targets mode ---
     elif arguments.targets:
-        all_findings, total_in_file, failed_count = scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
+        all_findings, total_in_file, failed_details = scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
 
         if arguments.output and all_findings:
-            save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_count=failed_count)
+            save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_details=failed_details)
 
         if arguments.cef_output and all_findings:
             saved_path = save_cef_report(arguments.cef_output, all_findings)
