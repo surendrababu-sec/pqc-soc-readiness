@@ -54,6 +54,18 @@ def build_cef_event(finding):
 
     return f"{header}|{extension}"
 
+# Puts the most urgent findings first, severity decides the order.
+# Score breaks the tie between findings that share the same severity
+def sort_findings_by_priority(all_findings):
+
+    severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+
+    return sorted(
+        all_findings,
+        key=lambda finding:(severity_rank.get(finding["severity"],4),
+        -finding["quantum_exposure_score"])
+    )
+
 # Writes one CEF line per finding into a single output file.
 def save_cef_report(filename, all_findings):
 
@@ -65,8 +77,11 @@ def save_cef_report(filename, all_findings):
     output_folder.mkdir(exist_ok=True)
     full_output_path = output_folder/filename
 
+     # Same urgency-first ordering as the JSON report
+    sorted_findings = sort_findings_by_priority(all_findings)
+
     with open(full_output_path, "w") as output_file:
-        for finding in all_findings:
+        for finding in sorted_findings:
             cef_line = build_cef_event(finding)
             output_file.write(cef_line + "\n")
 

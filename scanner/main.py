@@ -16,7 +16,7 @@ from rich.panel import Panel
 from modules.certificate_analyser import get_certificate, analyse_certificate, scan_from_file
 from modules.risk_engine import evaluate_risk
 from modules.pcap_analyser import analyse_pcap
-from modules.cef_writer import save_cef_report
+from modules.cef_writer import save_cef_report, sort_findings_by_priority
 
 # Single console instance used throughout for all formatted output.
 console = Console()
@@ -129,7 +129,6 @@ def display_pcap_results(all_findings, all_risks):
             console.print(Panel(risk.migration_advice, title=f"Migration Advice - {finding['algorithm']}", style="yellow"))
             printed_advice.add(finding["algorithm"])
 
-
 # Takes everything the scanner found and writes it into a structured JSON file.
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
 def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_details=None):
@@ -166,10 +165,10 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
         "failed_count": len(failed_details)
     }
 
-    # Bundle the metadata, findings, and failure details together into one complete report
+    # Bundle the metadata, findings (urgency-first order), and failure details together into one complete report
     scan_report = {
         "scan_metadata": scan_metadata,
-        "findings": all_findings,
+        "findings": sort_findings_by_priority(all_findings),
         "failed_scans": failed_details
     }
 
