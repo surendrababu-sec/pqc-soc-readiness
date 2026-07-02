@@ -205,6 +205,11 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
                 " Key size sourced from a live certificate fetch at time of analysis - "
                 "may differ from the key size active during the original capture."
             )
+        elif key_size_source == "supported_group":
+            rationale += (
+                " Key size derived from the classical ECC group offered in the Client Hello."
+            )
+        
 
     # Step 5: Package everything into a structured RiskFinding and return it.
     return RiskFinding(

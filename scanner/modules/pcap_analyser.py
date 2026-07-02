@@ -2,6 +2,7 @@ import struct
 import csv
 import ssl
 import socket
+import re
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from pathlib import Path
@@ -103,6 +104,60 @@ def load_cipher_suites():
 # Load the cipher suites once when this module is imported.
 ALL_CIPHER_SUITES = load_cipher_suites()
 
+# Gets the key size from the group name - IANA puts the bit size right in the name itself (secp256r1 -> 256, ffdhe4096 -> 4096).
+# One genuine exception: x25519, where '25519' is the prime field number (2^255 - 19), not the key size. RFC 7748 fixes X25519 keys at 32 bytes = 256 bits.
+# Hybrid groups return the classical component's size - that's the part HNDL applies to. Pure ML-KEM groups return None - already post-quantum safe.
+def get_key_size_from_group_name(group_name):
+
+    name = group_name.strip()
+    name_upper = name.upper()
+
+    # Pure post-quantum - HNDL doesn't apply, algorithm risk is already 0
+    if name_upper.startswith("MLKEM"):
+        return None
+    
+    # Hybrid groups - the classical component always comes first. Case-insensitive since different parsers normalise group names differently.
+    for pq_marker in ("MLKEM", "KYBER"):
+        if pq_marker in name_upper:
+            classical_part = name[:name_upper.index(pq_marker)]
+            return get_key_size_from_group_name(classical_part)
+        
+    if name_upper.startswith("X25519"):
+        return 256
+    
+    # For everything else, the first number in the name is the key size. 
+    # Numbers below 128 are filtered out - the smallest real group in the IANA registry is secp160k1 at 160 bits, so anything smaller isn't a key size.
+    numbers = re.findall(r'\d+', name)
+    if numbers and int(numbers[0])>=128:
+        return int(numbers[0])
+    
+    return None
+
+# Finds the most conservative classical ECC key size from the offered groups.
+# "Most conservative" means the smallest - if we don't know which group the server actually selected, reporting the smallest offered size means never understate the HNDL exposure.
+def get_ecc_key_size_from_groups(group_ids):
+
+    classical_key_sizes = []
+
+    for group_id in group_ids:
+
+        group_entry = ALL_SUPPORTED_GROUPS.get(group_id)
+
+        if group_entry is None:
+            continue
+
+        group_type = group_entry["group_type"]
+        key_size_bits = group_entry.get("key_size_bits")
+
+        # "ECC" in group_type catches both pure ECC and ECC+ML-KEM hybrid groups. For hybrid groups, key_size_bits already holds the classical component's size.
+        if "ECC" in group_type and key_size_bits is not None:
+            classical_key_sizes.append(key_size_bits)
+
+    if not classical_key_sizes:
+        return None
+    
+    return min(classical_key_sizes)
+
 # Loads the IANA supported groups registry from our local CSV file.
 # Same idea as load_cipher_suites
 def load_supported_groups():
@@ -176,7 +231,7 @@ def load_supported_groups():
                 group_type = "Unknown"
                 is_vulnerable = None
 
-            supported_group_lookup[group_id] = {"name": group_name, "group_type": group_type, "quantum_vulnerable": is_vulnerable}
+            supported_group_lookup[group_id] = {"name": group_name, "group_type": group_type, "quantum_vulnerable": is_vulnerable, "key_size_bits": get_key_size_from_group_name(group_name)}
     
     return supported_group_lookup
 
@@ -291,28 +346,38 @@ def get_modal_key_size(algorithm):
     return None
 
 
-# Tries three ways to get the key size for a PCAP finding, most accurate first.
-# Returns the key size and a label so the caller always knows which tier was used.
-def get_key_size_with_fallback(der_bytes, algorithm, server_ip, server_port):
+# Resolves the key size for a PCAP finding, most accurate source first.
+# ECC and RSA use different paths because the key size lives in a different place for each — the supported group for ECC, the certificate for RSA.
+def get_key_size_with_fallback(der_bytes, algorithm, server_ip, server_port, supported_groups=None):
+
+    # ECC key exchange key size comes from the supported group.
+    if "ECC" in algorithm:
+
+        if supported_groups:
+            group_key_size = get_ecc_key_size_from_groups(supported_groups)
+            if group_key_size is not None:
+                return group_key_size, "supported_group"
+            
+        # No group info available - fall straight to modal baseline
+        return get_modal_key_size(algorithm), "modal_baseline"
+    
+    # For RSA key exchange, the certificate is the key exchange mechanism - the client encrypts the premaster secret with the server's RSA public key.
 
     # Tier 1 - certificate was captured inside the PCAP itself
-    # This is the most accurate source - same session, same moment in time
     if der_bytes is not None:
         key_size = get_key_size_from_der(der_bytes)
         if key_size is not None:
             return key_size, "pcap_certificate"
         
     # Tier 2 - live certificate fetch from the server
-    # Only worth trying for RSA and ECC - the risk engine scores DH urgency regardless of key size, so a live fetch adds nothing for DH.
-    if "RSA" in algorithm or "ECC" in algorithm:
+    if "RSA" in algorithm:
         key_size = fetch_key_size_live(server_ip, server_port)
         if key_size is not None:
             return key_size, "live_fetch"
         
     # Tier 3 - modal baseline from documented field-wide deployment statistics
     # Covers internal IPs, offline servers, and anything else that fell through
-    modal_key_size = get_modal_key_size(algorithm)
-    return modal_key_size, "modal_baseline"
+    return get_modal_key_size(algorithm), "modal_baseline"
 
 
 # Takes one cipher suite integer, looks it up in the loaded dictionary
@@ -551,7 +616,7 @@ def analyse_pcap(pcap_filepath):
             continue
 
         # Resolve the key size through the three-tier fallback system
-        key_size, key_size_source = get_key_size_with_fallback(session["certificate_der"], algorithm, session["server_ip"], session["server_port"])
+        key_size, key_size_source = get_key_size_with_fallback(session["certificate_der"], algorithm, session["server_ip"], session["server_port"], supported_groups=session["supported_groups"])
 
         # Build the finding dictionary, same as what certificate_analyser produces
         # so it drops straight into the risk engine
