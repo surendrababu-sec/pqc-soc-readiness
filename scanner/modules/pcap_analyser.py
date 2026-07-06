@@ -348,11 +348,18 @@ def get_modal_key_size(algorithm):
 
 # Resolves the key size for a PCAP finding, most accurate source first.
 # ECC and RSA use different paths because the key size lives in a different place for each — the supported group for ECC, the certificate for RSA.
-def get_key_size_with_fallback(der_bytes, algorithm, server_ip, server_port, supported_groups=None):
+def get_key_size_with_fallback(der_bytes, algorithm, server_ip, server_port, supported_groups=None, selected_group=None):
 
     # ECC key exchange key size comes from the supported group.
     if "ECC" in algorithm:
 
+        # If the exact negotiated group is known from the Server Hello, use that to get the key size.
+        if selected_group is not None:
+            group_entry = ALL_SUPPORTED_GROUPS.get(selected_group)
+            if group_entry and group_entry.get("key_size_bits") is not None:
+                return group_entry["key_size_bits"], "negotiated_group"
+
+        # No exact group - use the most conservative from the client's offered list
         if supported_groups:
             group_key_size = get_ecc_key_size_from_groups(supported_groups)
             if group_key_size is not None:
@@ -543,6 +550,7 @@ def analyse_pcap(pcap_filepath):
                     "offered_suites"   : client_hello_data["cipher_suites"],
                     "supported_groups" : client_hello_data["supported_groups"],
                     "selected_suite"   : None,
+                    "selected_group"   : None, # filled in from server hello if a keyshare extension is present
                     "has_server_hello" : False,
                     "certificate_der"  : None   # filled in if a Certificate message is captured later
 
@@ -561,6 +569,9 @@ def analyse_pcap(pcap_filepath):
             if session_key in tls_sessions:
                 tls_sessions[session_key]["selected_suite"]   = server_hello_data["selected_cipher_suite"]
                 tls_sessions[session_key]["has_server_hello"] = True
+                # Store the exact negotiated group if the Server Hello included a keyshare extension
+                if server_hello_data["selected_group"] is not None:
+                    tls_sessions[session_key]["selected_group"] = server_hello_data["selected_group"]
 
         elif handshake_type == 0x0B:
 
@@ -616,7 +627,7 @@ def analyse_pcap(pcap_filepath):
             continue
 
         # Resolve the key size through the three-tier fallback system
-        key_size, key_size_source = get_key_size_with_fallback(session["certificate_der"], algorithm, session["server_ip"], session["server_port"], supported_groups=session["supported_groups"])
+        key_size, key_size_source = get_key_size_with_fallback(session["certificate_der"], algorithm, session["server_ip"], session["server_port"], supported_groups=session["supported_groups"], selected_group=session.get("selected_group"))
 
         # Build the finding dictionary, same as what certificate_analyser produces
         # so it drops straight into the risk engine
@@ -787,7 +798,7 @@ def parse_client_hello(record_data):
 # This was the agreed cipher suite by server from client cipher suites list
 def parse_server_hello(record_data):
 
-    result = {"selected_cipher_suite": None}
+    result = {"selected_cipher_suite": None, "selected_group": None}
 
     # Navigation is identical to Client Hello up to the cipher suite
     session_id_length_index = 38
@@ -810,6 +821,37 @@ def parse_server_hello(record_data):
         selected_cipher_suite = struct.unpack(">H", record_data[selected_suite_index : selected_suite_index + 2])[0]
 
         result["selected_cipher_suite"] = selected_cipher_suite
+
+        # Skip past the cipher suite (2 bytes) and compression method (1 byte) to reach the extensions length field
+        extensions_length_index = selected_suite_index + 2 + 1
+
+        if len(record_data) <= extensions_length_index + 2:
+            return result
+        
+        extensions_length =  struct.unpack(">H", record_data[extensions_length_index : extensions_length_index + 2])[0]
+
+        extensions_start = extensions_length_index + 2
+        extensions_end = extensions_start + extensions_length
+
+        # Go through each extension looking for keyshare (0x0033)
+        # Same 2byte type + 2byte length + data pattern as Client Hello extensions
+        ext_offset = extensions_start
+
+        while ext_offset + 4 <= min(extensions_end, len(record_data)):
+
+            ext_type = struct.unpack(">H", record_data[ext_offset : ext_offset + 2])[0]
+            ext_length = struct.unpack(">H", record_data[ext_offset + 2 : ext_offset + 4])[0]
+
+            # 0x0033 is the KeyShare extension - TLS 1.3 only
+            # The server sends exactly one group: 2 bytes group ID + 2 bytes key length + key bytes
+            if ext_type == 0x0033:
+                key_share_data_start = ext_offset + 4
+                if key_share_data_start + 2 <= len(record_data):
+                    selected_group = struct.unpack(">H", record_data[key_share_data_start : key_share_data_start + 2])[0]
+                    result["selected_group"] = selected_group
+                break
+
+            ext_offset += 4 + ext_length
 
     except(struct.error, IndexError):
 

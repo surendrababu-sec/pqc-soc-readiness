@@ -209,6 +209,10 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
             rationale += (
                 " Key size derived from the classical ECC group offered in the Client Hello."
             )
+        elif key_size_source == "negotiated_group":
+            rationale += (
+                " Key size read directly from the group the server selected in the KeyShare extension."
+            )
         
 
     # Step 5: Package everything into a structured RiskFinding and return it.
