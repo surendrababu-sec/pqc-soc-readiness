@@ -105,8 +105,10 @@ def load_cipher_suites():
 ALL_CIPHER_SUITES = load_cipher_suites()
 
 # Gets the key size from the group name - IANA puts the bit size right in the name itself (secp256r1 -> 256, ffdhe4096 -> 4096).
-# One genuine exception: x25519, where '25519' is the prime field number (2^255 - 19), not the key size. RFC 7748 fixes X25519 keys at 32 bytes = 256 bits.
-# Hybrid groups return the classical component's size - that's the part HNDL applies to. Pure ML-KEM groups return None - already post-quantum safe.
+# Three cases handled before the regex fallback:
+#   Pure ML-KEM groups -> returns None, already post-quantum safe
+#   Hybrid groups -> strips the PQ suffix and reads the classical component's size
+#   x25519 -> returns 256; '25519' is the prime field number, not the key size per RFC 7748
 def get_key_size_from_group_name(group_name):
 
     name = group_name.strip()
@@ -121,7 +123,8 @@ def get_key_size_from_group_name(group_name):
         if pq_marker in name_upper:
             classical_part = name[:name_upper.index(pq_marker)]
             return get_key_size_from_group_name(classical_part)
-        
+
+    # x25519: 25519 is the prime field number (2^255 - 19), not the key size. RFC 7748 fixes X25519 keys at 32 bytes = 256 bits.    
     if name_upper.startswith("X25519"):
         return 256
     
@@ -427,7 +430,7 @@ def classify_supported_groups(group_ids):
             has_pure_pqc = True
 
         elif "ECC+ML-KEM" in group_type:
-            # Hybrid - classical curver combined with ML-KEM
+            # Hybrid - classical curve combined with ML-KEM
             has_hybrid = True
 
         elif group_type == "DH":
@@ -440,14 +443,8 @@ def classify_supported_groups(group_ids):
             has_vulnerable = True
             has_vulnerable_ecc = True
 
-    # If both ECC and DH groups are present, TLS 1.3 picks ECC.
-    if has_vulnerable_ecc:
-        dominant_vulnerable_type = "ECC"
-    elif has_vulnerable_dh:
-        dominant_vulnerable_type = "DH"
-    else:
-        dominant_vulnerable_type = "ECC"    # safe default
-
+    # When both ECC and DH groups are present, TLS 1.3 picks ECC.
+    dominant_vulnerable_type = "ECC" if has_vulnerable_ecc else "DH"
 
 
     # Now work out the overall verdict

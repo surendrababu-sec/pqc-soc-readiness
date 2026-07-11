@@ -32,7 +32,7 @@ class RiskFinding(BaseModel):
     migration_advice: str
     rationale: str
     key_size_source: str = "certificate" # where the key size came from
-    threat_category: str = "confidentiality_harvest" # confidentiality_harvest = key exchange risk, signature_forgery = certificate forgery risk 
+    threat_category: str # must be "confidentiality_harvest" (key exchange risk) or "signature_forgery" (certificate forgery risk)
 
 
 # Figures out how urgently the detected algorithm needs to be replaced.
