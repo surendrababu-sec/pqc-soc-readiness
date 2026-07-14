@@ -524,10 +524,10 @@ def analyse_pcap(pcap_filepath):
         # Read the IP addresses and port numbers from this packet.
         # These four values together are like a fingerprint for this connection
         # no two connections on the network share the same combination at the same time.
-        client_ip = packet[IP].src
-        server_ip = packet[IP].dst
-        client_port = packet[TCP].sport
-        server_port = packet[TCP].dport
+        src_ip   = packet[IP].src
+        dst_ip   = packet[IP].dst
+        src_port = packet[TCP].sport
+        dst_port = packet[TCP].dport
 
         # A Client Hello means the client is starting a fresh TLS connection
         if handshake_type == 0x01:
@@ -535,15 +535,21 @@ def analyse_pcap(pcap_filepath):
             # Parse the Client Hello to get the cipher suites and supported groups
             client_hello_data = parse_client_hello(record_data)
 
-            # Store the session under a key, Client Hello: client -> server (src=client, dst=server)
-            session_key = (server_ip, server_port, client_ip, client_port)
+            # Client Hello flows client->server, so src=client, dst=server
+            actual_client_ip   = src_ip
+            actual_client_port = src_port
+            actual_server_ip   = dst_ip
+            actual_server_port = dst_port
+
+            # Store the session under a key
+            session_key = (actual_server_ip, actual_server_port, actual_client_ip, actual_client_port)
 
             # Only store this session if it is not seen before
             if session_key not in tls_sessions:
                 tls_sessions[session_key] = {
-                    "server_ip"        : server_ip,
-                    "server_port"      : server_port,
-                    "client_ip"        : client_ip,
+                    "server_ip"        : actual_server_ip,
+                    "server_port"      : actual_server_port,
+                    "client_ip"        : actual_client_ip,
                     "offered_suites"   : client_hello_data["cipher_suites"],
                     "supported_groups" : client_hello_data["supported_groups"],
                     "selected_suite"   : None,
@@ -559,8 +565,13 @@ def analyse_pcap(pcap_filepath):
             # Parse the Server Hello to get the chosen suite
             server_hello_data = parse_server_hello(record_data)
 
-            # Server Hello: server -> client (src=server, dst=client)
-            session_key = (client_ip, client_port, server_ip, server_port)
+            # Server Hello flows server->client, so src=server, dst=client
+            actual_server_ip   = src_ip
+            actual_server_port = src_port
+            actual_client_ip   = dst_ip
+            actual_client_port = dst_port
+
+            session_key = (actual_server_ip, actual_server_port, actual_client_ip, actual_client_port)
 
             # If already saw the Client Hello for this connection, update it
             if session_key in tls_sessions:
@@ -572,8 +583,13 @@ def analyse_pcap(pcap_filepath):
 
         elif handshake_type == 0x0B:
 
-            # Certificate comes from server to client
-            session_key = (client_ip, client_port, server_ip, server_port)
+            # Certificate flows server→client, so src=server, dst=client
+            actual_server_ip   = src_ip
+            actual_server_port = src_port
+            actual_client_ip   = dst_ip
+            actual_client_port = dst_port
+
+            session_key = (actual_server_ip, actual_server_port, actual_client_ip, actual_client_port)
 
             # Only store the first certificate seen for this session
             if session_key in tls_sessions and tls_sessions[session_key]["certificate_der"] is None:
