@@ -16,7 +16,7 @@ Every output traces back to a specific NIST standard, a documented threat, and a
  
 ## Demo
  
-<video src="assets/demo.mp4" controls width="100%"></video>
+https://github.com/surendrababu-sec/pqc-soc-readiness/raw/main/assets/demo.mp4
  
 > *Live certificate scan demo. PCAP output is shown in the [Sample Output](#sample-output) section below.*
  
