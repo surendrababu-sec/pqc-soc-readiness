@@ -436,7 +436,6 @@ pqc-soc-readiness/
 │   ├── targets.txt                   # Example target domains - edit with your own
 │   └── main.py                       # CLI entry point
 ├── assets/
-│   ├── demo.gif                      # Tool demo
 │   └── help_screenshot.png           # CLI --help output
 ├── MONTH-1-NOTES.md                  # Month 1 - HNDL threat landscape and foundations
 ├── MONTH-2-NOTES.md                  # Month 2 - CRYSTALS-Kyber mathematics
