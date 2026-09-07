@@ -10,6 +10,31 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh, ed25519, ed448
 from modules.risk_engine import evaluate_risk
 
+# NIST post-quantum algorithm OIDs, from FIPS 204 (ML-DSA) and FIPS 205 (SLH-DSA).
+# Every X.509 certificate carries an OID that names the public key algorithm - a globally unique numeric fingerprint. 
+# OIDs are used here instead of Python's cryptography library classes because that library does not yet expose usable classes for ML-DSA or SLH-DSA in current releases - but the OID sits in the certificate's structure regardless, so we can still recognise a post-quantum certificate on sight.
+post_quantum_algorithm_by_oid = {
+    # ML-DSA family (FIPS 204) - lattice-based signature
+    "2.16.840.1.101.3.4.3.17": "ML-DSA (ML-DSA-44)",
+    "2.16.840.1.101.3.4.3.18": "ML-DSA (ML-DSA-65)",
+    "2.16.840.1.101.3.4.3.19": "ML-DSA (ML-DSA-87)",
+    # SLH-DSA family (FIPS 205) - hash-based signature, conservative alternative to ML-DSA
+    # SHA2 variants at three security levels, each in small (s) and fast (f) forms
+    "2.16.840.1.101.3.4.3.20": "SLH-DSA (SLH-DSA-SHA2-128s)",
+    "2.16.840.1.101.3.4.3.21": "SLH-DSA (SLH-DSA-SHA2-128f)",
+    "2.16.840.1.101.3.4.3.22": "SLH-DSA (SLH-DSA-SHA2-192s)",
+    "2.16.840.1.101.3.4.3.23": "SLH-DSA (SLH-DSA-SHA2-192f)",
+    "2.16.840.1.101.3.4.3.24": "SLH-DSA (SLH-DSA-SHA2-256s)",
+    "2.16.840.1.101.3.4.3.25": "SLH-DSA (SLH-DSA-SHA2-256f)",
+    # SHAKE variants at three security levels, same small/fast pairing
+    "2.16.840.1.101.3.4.3.26": "SLH-DSA (SLH-DSA-SHAKE-128s)",
+    "2.16.840.1.101.3.4.3.27": "SLH-DSA (SLH-DSA-SHAKE-128f)",
+    "2.16.840.1.101.3.4.3.28": "SLH-DSA (SLH-DSA-SHAKE-192s)",
+    "2.16.840.1.101.3.4.3.29": "SLH-DSA (SLH-DSA-SHAKE-192f)",
+    "2.16.840.1.101.3.4.3.30": "SLH-DSA (SLH-DSA-SHAKE-256s)",
+    "2.16.840.1.101.3.4.3.31": "SLH-DSA (SLH-DSA-SHAKE-256f)",
+}
+
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
 def get_certificate(target, port):
 
@@ -38,12 +63,24 @@ def get_certificate(target, port):
 # Looks inside the certificate and figures out what algorithm is being used.
 # How big the key is, and whether it will survive a quantum computer.
 def analyse_certificate(certificate):
-    
-    # Pull the public key out of the certificate.
-    key = certificate.public_key()
 
     # Start building our findings
     findings = { "algorithm": None, "key_size": None, "vulnerable": None, "issuer": None, "expires": None}
+
+    # Post-quantum check first, before touching the public key object.
+    # ML-DSA and SLH-DSA are identified from the certificate's algorithm OID rather than by inspecting the key itself, because the cryptography library does not yet expose usable classes for either algorithm - calling public_key() on a PQ certificate could raise UnsupportedAlgorithm before we ever reach the classical checks below. The OID lives in the certificate's ASN.1 structure and can be read no matter which algorithm the library supports at runtime.
+    algorithm_oid = certificate.signature_algorithm_oid.dotted_string
+
+    if algorithm_oid in post_quantum_algorithm_by_oid:
+        findings["algorithm"] = post_quantum_algorithm_by_oid[algorithm_oid]
+        findings["key_size"] = None    # Not scored by key size - PQ algorithms use parameter sets, handled by the risk engine's post-quantum branch
+        findings["vulnerable"] = False # Post-quantum, not vulnerable to Shor's algorithm
+        findings["issuer"] = certificate.issuer.rfc4514_string()
+        findings["expires"] = certificate.not_valid_after_utc.strftime("%d %b %Y")
+        return findings
+
+    # Not a post-quantum certificate - pull the public key out and check what classical algorithm it uses.
+    key = certificate.public_key()
 
     # Check if the key is RSA or ECC, which are broken by Shor's algorithm on a quantum computer.
     if isinstance(key, rsa.RSAPublicKey):

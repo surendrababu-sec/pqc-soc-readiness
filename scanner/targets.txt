@@ -1,5 +1,0 @@
-google.com
-cloudflare.com
-badssl.com
-thisisnotarealdomain12345.fake
-nhs.uk
