@@ -33,7 +33,11 @@ def build_cef_event(finding):
     cef_severity = map_severity_to_cef(finding.get("severity", "LOW"))
 
     # The event name reads differently depending on which quantum threat this finding actually represents
-    if finding.get("threat_category") == "confidentiality_harvest":
+    # Post-quantum-safe findings are informational, not vulnerability events.
+    threat_category = finding.get("threat_category")
+    if threat_category == "pq_safe":
+        event_name = "Post-quantum safe algorithm detected"
+    elif threat_category == "confidentiality_harvest":
         event_name = "Quantum-vulnerable key exchange detected"
     else:
         event_name = "Quantum-vulnerable signature scheme detected"
@@ -41,10 +45,14 @@ def build_cef_event(finding):
     header = f"CEF:{cef_version}|{device_vendor}|{device_product}|{device_version}|{signature_id}|{event_name}|{cef_severity}"
 
     # Each extension field is key=value, with the value made CEF-safe first
+    # For post-quantum-safe findings, the score is None - display "N/A" to keep the field present and machine-readable rather than serialising "None" into the CEF output.
+    quantum_score = finding.get("quantum_exposure_score")
+    score_value = "N/A" if quantum_score is None else quantum_score
+    
     extension_fields = [
         f"target={escape_cef_value(finding.get('target', 'unknown'))}",
         f"algorithm={escape_cef_value(finding.get('algorithm', 'unknown'))}",
-        f"score={escape_cef_value(finding.get('quantum_exposure_score', 0))}",
+        f"score={escape_cef_value(score_value)}",
         f"threatCategory={escape_cef_value(finding.get('threat_category', 'unknown'))}",
         f"nistStandard={escape_cef_value(finding.get('nist_standard', 'unknown'))}",
         f"msg={escape_cef_value(finding.get('rationale', ''))}"
@@ -56,15 +64,18 @@ def build_cef_event(finding):
 
 # Puts the most urgent findings first, severity decides the order.
 # Score breaks the tie between findings that share the same severity
+# INFO findings (post-quantum safe) sort to the bottom because their severity rank is 5, below all four actionable severity bands. Their score is None, so the tie-breaker treats them as 0.
 def sort_findings_by_priority(all_findings):
 
-    severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+    severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 5}
 
     return sorted(
         all_findings,
-        key=lambda finding:(severity_rank.get(finding["severity"],4),
-        -finding["quantum_exposure_score"])
-    )
+        key=lambda finding:(
+            severity_rank.get(finding["severity"],4),
+            -finding["quantum_exposure_score"] if finding["quantum_exposure_score"] is not None else 0)
+        )
+    
 
 # Writes one CEF line per finding into a single output file.
 def save_cef_report(filename, all_findings):

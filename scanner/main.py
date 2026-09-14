@@ -51,10 +51,11 @@ def display_results(target, findings, risk):
         risk_label = "UNKNOWN - Further Analysis Needed"
         row_color = "yellow"
     else:
-        risk_label = "NOT DETECTED"
+        risk_label = "NO - Post-Quantum Safe"
         row_color = "green"
     
     # Add one row with everything we found about the target.
+    # PQ findings carry no numeric score - display "N/A" instead of the None value.
     results_table.add_row(
         target,
         findings["algorithm"],
@@ -62,7 +63,7 @@ def display_results(target, findings, risk):
         risk_label,
         findings["issuer"],
         findings["expires"],
-        str(risk.score),
+        str(risk.score) if risk.score is not None else "N/A",
         risk.severity,
         risk.nist_standard,
         style=row_color
@@ -113,7 +114,7 @@ def display_pcap_results(all_findings, all_risks):
             finding["client_ip"],
             finding["algorithm"],
             finding["cipher_suite"],
-            str(risk.score),
+            str(risk.score) if risk.score is not None else "N/A",
             risk.severity,
             risk.nist_standard,
             server_hello_label,

@@ -5,6 +5,7 @@
 
 import yaml
 from pathlib import Path
+from typing import Optional
 from pydantic import BaseModel
 
 # Build the path to the knowledge folder relative to where this file lives
@@ -22,17 +23,18 @@ with open(knowledge_folder / "nist_mappings.yaml") as open_file:
     nist_mappings = yaml.safe_load(open_file)
 
 
-# RiskFinding is a Pydantic model
-# where every field has an enforced type. If the wrong type gets passed in, Pydantic catches it immediately.
+# RiskFinding is a Pydantic model, where every field has an enforced type. If the wrong type gets passed in, Pydantic catches it immediately.
+# For quantum-vulnerable findings, score is a number in 0-100, severity is one of CRITICAL/HIGH/MEDIUM/LOW, and threat_category names the threat pathway.
+# For post-quantum-safe findings, score is None, severity is "INFO", and threat_category is "pq_safe" - the scoring model does not apply because there is no threat to score.
 class RiskFinding(BaseModel):
     algorithm: str
-    score: float
+    score: Optional[float]
     severity: str
     nist_standard: str
     migration_advice: str
     rationale: str
     key_size_source: str = "certificate" # where the key size came from
-    threat_category: str # must be "confidentiality_harvest" (key exchange risk) or "signature_forgery" (certificate forgery risk)
+    threat_category: str # "confidentiality_harvest" (key exchange risk), "signature_forgery" (certificate forgery risk), or "pq_safe" (already post-quantum, no threat)
 
 
 # Figures out how urgently the detected algorithm needs to be replaced.
@@ -121,13 +123,22 @@ def get_severity_label(score):
 
 # Looks up the right NIST recommendation for the detected algorithm.
 def get_nist_recommendation(algorithm, usage="signature"):
-    
+
+    # Hybrid PQC check runs before pure PQC because "ECC+ML-KEM" contains "ML-KEM" as a substring - if the pure PQ check ran first, hybrid findings would receive the generic "already post-quantum" text instead of the hybrid-specific ECC_hybrid YAML guidance.
+    if "ECC+ML-KEM" in algorithm:
+        mapping_key = "ECC_hybrid"
+        entry = nist_mappings.get(mapping_key)
+        if not entry:
+            return "No recommendation available", "No mapping found for this algorithm"
+        return entry["standard"], entry["migration"]
+
+    # Pure post-quantum check runs before classical checks because algorithm names like "ML-DSA (ML-DSA-65)" contain the substring "DSA", which would otherwise match the classical DSA branch below and route the finding to the wrong YAML entry.
+    if any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
+        return "FIPS 203/204/205 - already post-quantum", "This endpoint is already using NIST post-quantum cryptography. No migration action required."
+
+    # Classical algorithm routing
     if "RSA" in algorithm:
         mapping_key = f"RSA_{usage}"
-    elif "ECC+ML-KEM" in algorithm:
-        # Hybrid post-quantum, classical curve combined with ML-KEM.
-        # Also catches "ECC+ML-KEM (obsolete)"
-        mapping_key = "ECC_hybrid"
     elif "ECC" in algorithm:
         mapping_key = f"ECC_{usage}"
     elif "EdDSA" in algorithm:
@@ -137,14 +148,10 @@ def get_nist_recommendation(algorithm, usage="signature"):
         mapping_key = "DSA_signature"
     elif "DH" in algorithm:
         mapping_key = "DH_key_exchange"
-    elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
-        # Pure post-quantum algorithm - already safe, nothing to migrate.
-        return "FIPS 203/204/205 - already post-quantum", "This endpoint is already using NIST post-quantum cryptography. No migration action required."
     else:
         return "No recommendation available", "Algorithm not recognised - manual review required"
     
     entry = nist_mappings.get(mapping_key)
-
     if not entry:
         return "No recommendation available", "No mapping found for this algorithm"
     
@@ -152,7 +159,34 @@ def get_nist_recommendation(algorithm, usage="signature"):
 
 
 # Ties everything together and returns one complete finding.
+# Post-quantum algorithms short-circuit at the top - they carry no HNDL or forgery threat, so the scoring model does not apply and no score, severity band, or threat category is assigned.
 def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature", key_size_source="certificate"):
+
+    # PQ-safe short-circuit
+    # Any algorithm string containing ML-KEM, ML-DSA, or SLH-DSA is post-quantum safe. This catches pure PQ (ML-KEM, ML-DSA, SLH-DSA) and hybrid constructions such as ECC+ML-KEM, where the ML-KEM component protects the session even if the classical component is quantum-broken.
+    if any(pq_algorithm in algorithm for pq_algorithm in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
+
+        # Route to the NIST recommendation - the existing function already distinguishes pure PQ from hybrid via the ECC_hybrid mapping
+        nist_standard, migration_advice = get_nist_recommendation(algorithm, usage)
+
+        rationale = (
+            f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
+            "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
+            "The quantum exposure scoring model does not apply to post-quantum findings, as there is no threat to score."
+        )
+
+        return RiskFinding(
+            algorithm=algorithm,
+            score=None,             # scoring model does not apply
+            severity="INFO",        # informational, not actionable
+            nist_standard=nist_standard,
+            migration_advice=migration_advice,
+            rationale=rationale,
+            key_size_source=key_size_source,
+            threat_category="pq_safe"
+        )
+
+    # Quantum-vulnerable path - scoring model applies
 
     # Step 1: Calculate the full quantum exposure score
     score = calculate_exposure_score(algorithm, key_size, data_sensitivity, data_lifetime, exposure_surface)
@@ -170,12 +204,6 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
             "Score is based on a precautionary medium-risk assumption. "
             f"Quantum exposure score: {score}/100 ({severity})."
         )
-    elif any(safe in algorithm for safe in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
-        rationale = (
-            f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
-            "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
-            f"Quantum exposure score: {score}/100 ({severity})."
-        )
     else:
         if usage == "key_exchange":
             # Confidentiality risk - session keys captured today are retroactively decryptable once a quantum computer exists
@@ -186,11 +214,11 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
                 f"Quantum exposure score: {score}/100 ({severity})."
             )
         else:
-            # Authentication risk - a quantum computer can break the signature scheme and forge certificates going forward, enabling impersonation
+            # Authentication risk - a quantum computer can derive the private signing key from the public key, enabling impersonation of the server for as long as the certificate remains valid
             rationale = (
                 f"{algorithm} is vulnerable to Shor's algorithm. "
-                "A quantum computer capable of breaking this signature scheme could forge certificates "
-                "and impersonate this endpoint - this is a forward-looking authentication risk. "
+                "A quantum computer capable of breaking this signature scheme could derive the private signing key from the public key, "
+                "and with the private key impersonate this endpoint for as long as the certificate remains valid - this is a forward-looking authentication risk. "
                 f"Quantum exposure score: {score}/100 ({severity})."
             )
 
