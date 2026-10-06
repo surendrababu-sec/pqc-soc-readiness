@@ -7,6 +7,7 @@
 import socket
 import argparse
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from rich.console import Console
@@ -17,6 +18,7 @@ from modules.certificate_analyser import get_certificate, analyse_certificate, s
 from modules.risk_engine import evaluate_risk
 from modules.pcap_analyser import analyse_pcap
 from modules.cef_writer import save_cef_report, sort_findings_by_priority
+from modules.ndjson_writer import save_ndjson_report
 
 # Single console instance used throughout for all formatted output.
 console = Console()
@@ -132,7 +134,7 @@ def display_pcap_results(all_findings, all_risks):
 
 # Takes everything the scanner found and writes it into a structured JSON file.
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
-def save_json_report(filename, all_findings, arguments,  total_in_file=None, failed_details=None):
+def save_json_report(filename, all_findings, arguments,  scan_id, total_in_file=None, failed_details=None):
 
     # If nothing came in for failed_details, start a fresh empty list
     failed_details = failed_details or []
@@ -150,6 +152,7 @@ def save_json_report(filename, all_findings, arguments,  total_in_file=None, fai
 
     # Build the metadata section
     scan_metadata = {
+        "scan_id": scan_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "scanner_version": "0.1",
         "threat_model": "HNDL (Harvest Now, Decrypt Later) and quantum authentication forgery",
@@ -231,8 +234,16 @@ if __name__ == "__main__":
     # Where to save the CEF report - optional, only saves if this flag is provided
     parser.add_argument("--cef-output", metavar="file", help="Save the scan results to a CEF file for SIEM integration (e.g. report.cef)")
 
+    # Where to save the NDJSON report - optional, only saves if this flag is provided
+    # NDJSON is one JSON object per line, which Splunk and most SIEMs ingest with zero configuration guesswork.
+    parser.add_argument("--ndjson-output", metavar="file", help="Save the scan results to an NDJSON file for SIEM ingestion (e.g. report.ndjson)")
+
     # Read what the user typed in the command line and store it
     arguments = parser.parse_args()
+
+    # One scan_id per scan run, generated before any mode branches.
+    # Both the wrapped JSON report and the NDJSON stream carry this value, which lets a SIEM analyst join the two files back together.
+    scan_id = str(uuid.uuid4())
 
     # --- Single target mode ---
     if arguments.target:
@@ -287,23 +298,46 @@ if __name__ == "__main__":
 
         # Save the JSON report if the --output was specified.
         if arguments.output and all_findings:
-            save_json_report(arguments.output, all_findings, arguments)
+            save_json_report(arguments.output, all_findings, arguments, scan_id)
 
         # CEF is a separate, optional output. Saved independently of JSON
         if arguments.cef_output and all_findings:
             saved_path = save_cef_report(arguments.cef_output, all_findings)
             console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
 
+        # NDJSON is a separate, optional output. Saved independently of JSON and CEF.
+        if arguments.ndjson_output and all_findings:
+            saved_path = save_ndjson_report(
+                arguments.ndjson_output,
+                all_findings,
+                scan_id,
+                data_sensitivity=arguments.sensitivity,
+                data_lifetime=arguments.lifetime,
+                exposure_surface=arguments.exposure
+            )
+            console.print(f"\n[bold green]NDJSON report saved to '{saved_path}'[/bold green]")
+
     # --- File of targets mode ---
     elif arguments.targets:
         all_findings, total_in_file, failed_details = scan_from_file(arguments.targets, arguments.port, display_results, console, arguments.sensitivity, arguments.lifetime, arguments.exposure)
 
         if arguments.output and all_findings:
-            save_json_report(arguments.output, all_findings, arguments, total_in_file=total_in_file, failed_details=failed_details)
+            save_json_report(arguments.output, all_findings, arguments, scan_id, total_in_file=total_in_file, failed_details=failed_details)
 
         if arguments.cef_output and all_findings:
             saved_path = save_cef_report(arguments.cef_output, all_findings)
             console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
+
+        if arguments.ndjson_output and all_findings:
+            saved_path = save_ndjson_report(
+                arguments.ndjson_output,
+                all_findings,
+                scan_id,
+                data_sensitivity=arguments.sensitivity,
+                data_lifetime=arguments.lifetime,
+                exposure_surface=arguments.exposure
+            )
+            console.print(f"\n[bold green]NDJSON report saved to '{saved_path}'[/bold green]")
 
     # --- PCAP handshake analysis mode ---
     elif arguments.pcap:
@@ -355,9 +389,8 @@ if __name__ == "__main__":
                 console.print(f"[bold green]Post-quantum safe  : {post_quantum_safe_count}[/bold green]")
                 console.print(f"[bold yellow]Unknown            : {unknown_count}[/bold yellow]")
 
-                # JSON and CEF both need the scores attached to each finding first,
-                # so this step runs if either one was asked for
-                if arguments.output or arguments.cef_output:
+                # JSON, CEF, and NDJSON all need the scores attached to each finding first, so this step runs if any of them were asked for.
+                if arguments.output or arguments.cef_output or arguments.ndjson_output:
                     enriched_findings = []
                     for finding, risk in zip(pcap_findings, all_risks):
                         # Copy the finding dictionary
@@ -370,13 +403,24 @@ if __name__ == "__main__":
                         enriched["rationale"]              = risk.rationale
                         enriched_findings.append(enriched)
                     
-                    # JSON and CEF are independent - either, both, or neither can be requested
+                    # JSON, CEF, and NDJSON are independent - any, all, or none can be requested
                     if arguments.output:
-                        save_json_report(arguments.output, enriched_findings, arguments, total_in_file=total_sessions)
+                        save_json_report(arguments.output, enriched_findings, arguments, scan_id, total_in_file=total_sessions)
 
                     if arguments.cef_output:
                         saved_path = save_cef_report(arguments.cef_output, enriched_findings)
                         console.print(f"\n[bold green]CEF report saved to '{saved_path}'[/bold green]")
+
+                    if arguments.ndjson_output:
+                        saved_path = save_ndjson_report(
+                            arguments.ndjson_output,
+                            enriched_findings,
+                            scan_id,
+                            data_sensitivity=arguments.sensitivity,
+                            data_lifetime=arguments.lifetime,
+                            exposure_surface=arguments.exposure
+                        )
+                        console.print(f"\n[bold green]NDJSON report saved to '{saved_path}'[/bold green]")
         
         except FileNotFoundError as error:
             console.print(f"\n[bold red]{error}[/bold red]")
