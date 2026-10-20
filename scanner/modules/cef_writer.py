@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+from modules.risk_engine import SEVERITY_NOT_SCORED
 
 # CEF treats backslash and the equals sign as special inside a value, so both need a backslash placed in front of them before the value goes into the line.
 # Backslash has to be escaped first - otherwise the backslash placed in front of the equals sign on the next line would get caught and escaped a second time.
@@ -14,12 +15,19 @@ def escape_cef_value(field_value):
 
     return field_value
 
-# CEF severity runs on a 0 to 10 scale. The scanner's severity labels are four named words instead - this is the fixed mapping between the two.
+# CEF severity runs on a 0 to 10 scale. 
+# INFO is left out of the table on purpose. It falls through to 0, which is right for a safe finding.
 def map_severity_to_cef(severity_label):
 
-    severity_lookup = { "CRITICAL": 10, "HIGH": 7, "MEDIUM": 4, "LOW": 1}
+    severity_lookup = { 
+        "CRITICAL": 10, 
+        "HIGH": 7, 
+        "MEDIUM": 4,
+        # NOT-SCORED is not a score band. MEDIUM is 4 and HIGH is 7, so 5 sits between them.
+        # If this line were missing, the finding would become 0, the same number as a safe one.
+        SEVERITY_NOT_SCORED: 5,
+        "LOW": 1}
 
-    # Falls back to 0 if a label outside these four ever shows up
     return severity_lookup.get(severity_label, 0)
 
 # Builds one full CEF line out of a single finding. Header fields first, then a space-separated list of key=value extension fields at the end.
@@ -32,20 +40,22 @@ def build_cef_event(finding):
     signature_id = finding.get("algorithm", "unknown")
     cef_severity = map_severity_to_cef(finding.get("severity", "LOW"))
 
-    # The event name reads differently depending on which quantum threat this finding actually represents
+    # The event name reads differently depending on which quantum threat this finding represents
     # Post-quantum-safe findings are informational, not vulnerability events.
     threat_category = finding.get("threat_category")
     if threat_category == "pq_safe":
         event_name = "Post-quantum safe algorithm detected"
     elif threat_category == "confidentiality_harvest":
         event_name = "Quantum-vulnerable key exchange detected"
+    elif threat_category == "issuer_classical":
+        event_name = "Post-quantum leaf under classical issuer signature detected"
     else:
         event_name = "Quantum-vulnerable signature scheme detected"
 
     header = f"CEF:{cef_version}|{device_vendor}|{device_product}|{device_version}|{signature_id}|{event_name}|{cef_severity}"
 
     # Each extension field is key=value, with the value made CEF-safe first
-    # For post-quantum-safe findings, the score is None - display "N/A" to keep the field present and machine-readable rather than serialising "None" into the CEF output.
+    # For post-quantum-safe and NOT-SCORED findings, the score is None - display "N/A" to keep the field present and machine-readable rather than serialising "None" into the CEF output.
     quantum_score = finding.get("quantum_exposure_score")
     score_value = "N/A" if quantum_score is None else quantum_score
     
@@ -55,16 +65,24 @@ def build_cef_event(finding):
         f"score={escape_cef_value(score_value)}",
         f"threatCategory={escape_cef_value(finding.get('threat_category', 'unknown'))}",
         f"nistStandard={escape_cef_value(finding.get('nist_standard', 'unknown'))}",
-        f"msg={escape_cef_value(finding.get('rationale', ''))}"
     ]
+
+    # PCAP findings never read a certificate - skip the field rather than invent a value.
+    issuer_signature = finding.get("issuer_signature_algorithm")
+    if issuer_signature is not None:
+        extension_fields.append(f"issuerSignatureAlgorithm={escape_cef_value(issuer_signature)}")
+
+    # msg goes last by CEF convention - the rationale contains spaces and parsers handle it most reliably at the end.
+    extension_fields.append(f"msg={escape_cef_value(finding.get('rationale', ''))}")
 
     extension = " ".join(extension_fields)
 
     return f"{header}|{extension}"
 
 # Puts the most urgent findings first, severity decides the order.
-# Score breaks the tie between findings that share the same severity
-# INFO findings (post-quantum safe) sort to the bottom because their severity rank is 5, below all four actionable severity bands. Their score is None, so the tie-breaker treats them as 0.
+# Score breaks the tie between findings that share the same severity.
+# NOT-SCORED is absent from the rank map on purpose - the default rank of 4 puts it between LOW and INFO.
+# INFO findings (post-quantum safe) sort to the bottom because their rank is 5. Score is None for these, so the tie-breaker treats them as 0.
 def sort_findings_by_priority(all_findings):
 
     severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 5}

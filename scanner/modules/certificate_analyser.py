@@ -8,11 +8,11 @@ import socket
 import os
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, dh, ed25519, ed448
-from modules.risk_engine import evaluate_risk
+from modules.risk_engine import certificate_risk
 
 # NIST post-quantum algorithm OIDs, from FIPS 204 (ML-DSA) and FIPS 205 (SLH-DSA).
-# Every X.509 certificate carries an OID that names the public key algorithm - a globally unique numeric fingerprint. 
-# OIDs are used here instead of Python's cryptography library classes because that library does not yet expose usable classes for ML-DSA or SLH-DSA in current releases - but the OID sits in the certificate's structure regardless, so we can still recognise a post-quantum certificate on sight.
+# NIST assigned each parameter set one OID, and that same OID is used both for the subject public key and for the signature algorithm. One table answers both questions.
+# The names are the single spelling used in findings. Do not add a second copy.
 post_quantum_algorithm_by_oid = {
     # ML-DSA family (FIPS 204) - lattice-based signature
     "2.16.840.1.101.3.4.3.17": "ML-DSA (ML-DSA-44)",
@@ -34,6 +34,33 @@ post_quantum_algorithm_by_oid = {
     "2.16.840.1.101.3.4.3.30": "SLH-DSA (SLH-DSA-SHAKE-256s)",
     "2.16.840.1.101.3.4.3.31": "SLH-DSA (SLH-DSA-SHAKE-256f)",
 }
+
+# Signature-algorithm OIDs that show up on ordinary certificates. These are not public-key OIDs. sha256WithRSAEncryption is not rsaEncryption.
+# Anything absent from this map and from the post-quantum table is reported as the raw dotted OID.
+# The leaf algorithm is never used as a substitute.
+
+classical_signature_algorithm_by_oid = {
+    "1.2.840.113549.1.1.5": "sha1WithRSAEncryption",
+    "1.2.840.113549.1.1.11": "sha256WithRSAEncryption",
+    "1.2.840.113549.1.1.12": "sha384WithRSAEncryption",
+    "1.2.840.113549.1.1.13": "sha512WithRSAEncryption",
+    "1.2.840.113549.1.1.10": "rsassa-pss",
+    "1.2.840.10045.4.3.2": "ecdsa-with-SHA256",
+    "1.2.840.10045.4.3.3": "ecdsa-with-SHA384",
+    "1.2.840.10045.4.3.4": "ecdsa-with-SHA512",
+    "1.3.101.112": "Ed25519",
+    "1.3.101.113": "Ed448",
+}
+
+def name_signature_algorithm(signature_oid):
+
+    if signature_oid in post_quantum_algorithm_by_oid:
+        return post_quantum_algorithm_by_oid[signature_oid]
+
+    if signature_oid in classical_signature_algorithm_by_oid:
+        return classical_signature_algorithm_by_oid[signature_oid]
+
+    return signature_oid  # Fallback to the raw dotted OID if it's not in either table
 
 # Reaches out to the target server, completes the TLS handshake and pulls back the certificate.
 def get_certificate(target, port):
@@ -60,26 +87,53 @@ def get_certificate(target, port):
 
     return certificate
 
-# Looks inside the certificate and figures out what algorithm is being used.
-# How big the key is, and whether it will survive a quantum computer.
+# Figures out what algorithm, key size, and quantum threat the certificate carries.
+# Two OIDs on every certificate - leaf public key, and issuer signature. Both must be post-quantum before the certificate is truly safe. 
+# Four cases:
+#   row 1: classical leaf + classical issuer sig  -> signature_forgery (scored)
+#   row 2: classical leaf + PQ issuer sig         -> signature_forgery (scored, leaf still breakable)
+#   row 3: PQ leaf       + classical issuer sig   -> issuer_classical (NOT-SCORED, issuer signature still classical)
+#   row 4: PQ leaf       + PQ issuer sig          -> pq_safe (INFO, no score)
 def analyse_certificate(certificate):
 
-    # Start building our findings
-    findings = { "algorithm": None, "key_size": None, "vulnerable": None, "issuer": None, "expires": None}
+    # issuer here is the X.509 issuer distinguished name, not the signature algorithm.
+    findings = { 
+        "algorithm": None, 
+        "key_size": None, 
+        "vulnerable": None, 
+        "issuer": certificate.issuer.rfc4514_string(), 
+        "expires": certificate.not_valid_after_utc.strftime("%d %b %Y"),
+        "issuer_signature_algorithm": None,
+        "threat_category": None,
+        }
 
-    # Post-quantum check first, before touching the public key object.
-    # ML-DSA and SLH-DSA are identified from the certificate's algorithm OID rather than by inspecting the key itself, because the cryptography library does not yet expose usable classes for either algorithm - calling public_key() on a PQ certificate could raise UnsupportedAlgorithm before we ever reach the classical checks below. The OID lives in the certificate's ASN.1 structure and can be read no matter which algorithm the library supports at runtime.
-    algorithm_oid = certificate.signature_algorithm_oid.dotted_string
+    # Two different OIDs. The leaf OID names the server's own key.
+    # The signature OID names the algorithm that signed this certificate.
+    # public_key_algorithm_oid does not parse the key bytes, so an ML-DSA leaf does not have to be loaded.
+    leaf_oid = certificate.public_key_algorithm_oid.dotted_string
+    issuer_oid = certificate.signature_algorithm_oid.dotted_string
+    leaf_is_post_quantum = leaf_oid in post_quantum_algorithm_by_oid
+    issuer_is_post_quantum = issuer_oid in post_quantum_algorithm_by_oid
 
-    if algorithm_oid in post_quantum_algorithm_by_oid:
-        findings["algorithm"] = post_quantum_algorithm_by_oid[algorithm_oid]
-        findings["key_size"] = None    # Not scored by key size - PQ algorithms use parameter sets, handled by the risk engine's post-quantum branch
-        findings["vulnerable"] = False # Post-quantum, not vulnerable to Shor's algorithm
-        findings["issuer"] = certificate.issuer.rfc4514_string()
-        findings["expires"] = certificate.not_valid_after_utc.strftime("%d %b %Y")
+    findings["issuer_signature_algorithm"] = name_signature_algorithm(issuer_oid)
+
+    # Rows 3 and 4. The leaf is post-quantum, so the classical key parser must not run.
+    # threat_category is the classification the callers trust. They do not work it out again.
+    if leaf_is_post_quantum:
+        findings["algorithm"] = post_quantum_algorithm_by_oid[leaf_oid]
+        findings["key_size"] = None
+
+        if issuer_is_post_quantum:
+            findings["vulnerable"] = False
+            findings["threat_category"] = "pq_safe"
+        else:
+            findings["vulnerable"] = True
+            findings["threat_category"] = "issuer_classical"
+
         return findings
-
-    # Not a post-quantum certificate - pull the public key out and check what classical algorithm it uses.
+    
+    # Rows 1 and 2. The leaf is classical, so read the key for the algorithm and the size.
+    # A post-quantum issuer signature does not change that. The leaf is still breakable.
     key = certificate.public_key()
 
     # Check if the key is RSA or ECC, which are broken by Shor's algorithm on a quantum computer.
@@ -116,15 +170,13 @@ def analyse_certificate(certificate):
         findings["key_size"] = 448
         findings["vulnerable"] = True
 
-    # If it's neither of the above algorithms, we don't know what it is yet
+    # If it's neither of the above algorithms, don't know what it is yet
     else:
         findings["algorithm"] = "Unknown - further analysis needed"
         findings["key_size"] = None
         findings["vulnerable"] = None
 
-    # Grab who issued this certificate, and when it expires
-    findings["issuer"] = certificate.issuer.rfc4514_string()
-    findings["expires"] = certificate.not_valid_after_utc.strftime("%d %b %Y")
+    findings["threat_category"] = "signature_forgery"
 
     return findings
 
@@ -165,9 +217,8 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
             console.print("Analysing certificate...", style="bold cyan")
             findings = analyse_certificate(certificate)
 
-            # Run the risk engine to score and get NIST recommendations
             console.print("Evaluating risk...", style="bold cyan")
-            risk = evaluate_risk(findings["algorithm"], findings["key_size"], data_sensitivity=data_sensitivity, data_lifetime=data_lifetime, exposure_surface=exposure_surface)
+            risk = certificate_risk(findings, data_sensitivity=data_sensitivity, data_lifetime=data_lifetime, exposure_surface=exposure_surface)
 
             # Display the results for this domain
             display_function(domain, findings, risk)
@@ -180,6 +231,7 @@ def scan_from_file(file_path, port, display_function, console, data_sensitivity=
                 "vulnerable": findings["vulnerable"],
                 "issuer": findings["issuer"],
                 "expires": findings["expires"],
+                "issuer_signature_algorithm": findings["issuer_signature_algorithm"],
                 "quantum_exposure_score": risk.score,
                 "threat_category": risk.threat_category,
                 "severity": risk.severity,

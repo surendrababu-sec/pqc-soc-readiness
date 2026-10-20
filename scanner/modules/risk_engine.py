@@ -24,8 +24,8 @@ with open(knowledge_folder / "nist_mappings.yaml") as open_file:
 
 
 # RiskFinding is a Pydantic model, where every field has an enforced type. If the wrong type gets passed in, Pydantic catches it immediately.
-# For quantum-vulnerable findings, score is a number in 0-100, severity is one of CRITICAL/HIGH/MEDIUM/LOW, and threat_category names the threat pathway.
-# For post-quantum-safe findings, score is None, severity is "INFO", and threat_category is "pq_safe" - the scoring model does not apply because there is no threat to score.
+# A post-quantum finding has no score, severity is "INFO", and threat_category is "pq_safe".
+# A post-quantum leaf signed with a classical algorithm has no score either, but it is not safe. That one has severity NOT-SCORED and the category issuer_classical. 
 class RiskFinding(BaseModel):
     algorithm: str
     score: Optional[float]
@@ -34,8 +34,20 @@ class RiskFinding(BaseModel):
     migration_advice: str
     rationale: str
     key_size_source: str = "certificate" # where the key size came from
-    threat_category: str # "confidentiality_harvest" (key exchange risk), "signature_forgery" (certificate forgery risk), or "pq_safe" (already post-quantum, no threat)
+    threat_category: str # "confidentiality_harvest" (key exchange), "signature_forgery" (certificate forgery), "issuer_classical" (post-quantum leaf, classical issuer signature), or "pq_safe" (nothing left to migrate)
 
+# Severity label for a finding that falls outside the scoring formula.
+# Used when the leaf key is post-quantum but the issuer signature on this certificate is classical.
+SEVERITY_NOT_SCORED = "NOT-SCORED"
+
+# Shared post-quantum rationale text. Called from the PQ short-circuit in evaluate_risk and from the pq_safe branch in certificate_risk.
+def post_quantum_rationale(algorithm):
+
+    return (
+        f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
+        "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
+        "The quantum exposure scoring model does not apply to post-quantum findings, as there is no threat to score."
+    )
 
 # Figures out how urgently the detected algorithm needs to be replaced.
 # Returns a number from 0 to 3 - 0 means already safe, 3 means act now.
@@ -159,7 +171,9 @@ def get_nist_recommendation(algorithm, usage="signature"):
 
 
 # Ties everything together and returns one complete finding.
-# Post-quantum algorithms short-circuit at the top - they carry no HNDL or forgery threat, so the scoring model does not apply and no score, severity band, or threat category is assigned.
+# A post-quantum algorithm stops at the top: no score, severity INFO, category pq_safe.
+# Do not send a certificate with a post-quantum leaf through here.
+# certificate_risk takes those. A classical signature on that certificate is not safe.
 def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature", key_size_source="certificate"):
 
     # PQ-safe short-circuit
@@ -169,11 +183,7 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         # Route to the NIST recommendation - the existing function already distinguishes pure PQ from hybrid via the ECC_hybrid mapping
         nist_standard, migration_advice = get_nist_recommendation(algorithm, usage)
 
-        rationale = (
-            f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
-            "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
-            "The quantum exposure scoring model does not apply to post-quantum findings, as there is no threat to score."
-        )
+        rationale = post_quantum_rationale(algorithm)
 
         return RiskFinding(
             algorithm=algorithm,
@@ -254,3 +264,71 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         key_size_source=key_size_source,
         threat_category="confidentiality_harvest" if usage == "key_exchange" else "signature_forgery"
     )
+
+# Entry point for certificate findings. PCAP keeps calling evaluate_risk directly.
+# analyse_certificate has already set threat_category for post-quantum leaves, so this dispatches on that label and skips evaluate_risk's PQ short-circuit (which would otherwise misclassify a post-quantum leaf under a classical issuer signature as safe).
+def certificate_risk(findings, data_sensitivity=2, data_lifetime=2, exposure_surface=2):
+
+    algorithm = findings["algorithm"]
+    category = findings.get("threat_category")
+
+    # Post-quantum leaf, classical issuer signature.
+    # The server's own key is post-quantum. The signature on this certificate is not.
+    # Not safe. No score: the issuer's key size is not on this certificate.
+    if category == "issuer_classical":
+        if "SLH-DSA" in algorithm:
+            nist_standard = "Leaf is FIPS 205 (SLH-DSA); issuer signature is classical"
+        elif "ML-DSA" in algorithm:
+            nist_standard = "Leaf is FIPS 204 (ML-DSA); issuer signature is classical"
+        else:
+            nist_standard = "Leaf is post-quantum; issuer signature is classical"
+
+        issuer_signature = findings.get("issuer_signature_algorithm")
+        migration_advice = (
+            "The server's own key is already post-quantum. "
+            f"The signature on this certificate is still classical ({issuer_signature}). "
+            "That signature was produced by the issuer, and this scan did not read the issuer's key. "
+            "The remaining work is a certificate signed with ML-DSA or SLH-DSA. "
+            "Until then, a quantum computer that can break the issuer's key can sign a different certificate for this name."
+        )
+        rationale = (
+            f"The leaf key ({algorithm}) is post-quantum, so Shor's algorithm does not recover this server's private key from it. "
+            f"The signature on the certificate is classical ({issuer_signature}). "
+            "The issuer's key size is not in this certificate, so no exposure score was calculated. "
+            "The finding is not safe."
+        )
+        return RiskFinding(
+            algorithm=algorithm,
+            score=None,
+            severity=SEVERITY_NOT_SCORED,
+            nist_standard=nist_standard,
+            migration_advice=migration_advice,
+            rationale=rationale,
+            key_size_source="not_applicable",
+            threat_category="issuer_classical",
+        )
+
+    # Fully post-quantum - both leaf and issuer signature are PQ.
+    if category == "pq_safe":
+        nist_standard, migration_advice = get_nist_recommendation(algorithm)
+        return RiskFinding(
+            algorithm=algorithm,
+            score=None,
+            severity="INFO",
+            nist_standard=nist_standard,
+            migration_advice=migration_advice,
+            rationale=post_quantum_rationale(algorithm),
+            key_size_source="not_applicable",
+            threat_category="pq_safe",
+        )
+
+    # Classical leaf (signature_forgery). Delegate to the existing scoring path.
+    return evaluate_risk(
+        algorithm,
+        findings["key_size"],
+        data_sensitivity=data_sensitivity,
+        data_lifetime=data_lifetime,
+        exposure_surface=exposure_surface,
+    )
+
+

@@ -13,3 +13,6 @@ __pycache__/
 
 # VS Code local settings
 .vscode/
+
+# Local test certificates - excluded from repo, kept locally only
+scanner/testdata/

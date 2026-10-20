@@ -15,7 +15,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 from modules.certificate_analyser import get_certificate, analyse_certificate, scan_from_file
-from modules.risk_engine import evaluate_risk
+from modules.risk_engine import evaluate_risk, certificate_risk
 from modules.pcap_analyser import analyse_pcap
 from modules.cef_writer import save_cef_report, sort_findings_by_priority
 from modules.ndjson_writer import save_ndjson_report
@@ -46,7 +46,10 @@ def display_results(target, findings, risk):
     results_table.add_column("NIST Standard")
 
     # Decide the risk label and row colour based on what was found
-    if findings["vulnerable"]:
+    if findings.get("threat_category") == "issuer_classical":
+        risk_label = "NOT SAFE - issuer signature is classical"
+        row_color = "red"
+    elif findings["vulnerable"]:
         risk_label = "YES - Quantum Vulnerable"
         row_color = "red"
     elif findings["vulnerable"] is None:
@@ -134,7 +137,7 @@ def display_pcap_results(all_findings, all_risks):
 
 # Takes everything the scanner found and writes it into a structured JSON file.
 # SIEM tools like Splunk and QRadar can automatically pick this up and process the findings without any manual effort from the analyst.
-def save_json_report(filename, all_findings, arguments,  scan_id, total_in_file=None, failed_details=None):
+def save_json_report(filename, all_findings, arguments, scan_id, total_in_file=None, failed_details=None):
 
     # If nothing came in for failed_details, start a fresh empty list
     failed_details = failed_details or []
@@ -222,7 +225,7 @@ if __name__ == "__main__":
     # How sensitive is the data this target is protecting?
     parser.add_argument("--sensitivity", type=int, default=2, choices=[1,2,3], metavar="level", help="Data sensitivity level - 1=low, 2=medium, 3=high (default: 2)")
 
-    # How long does this data need tostay secret?
+    # How long does this data need to stay secret?
     parser.add_argument("--lifetime", type=int, default=2, choices=[1,2,3], metavar="level", help="Data lifetime - 1=months, 2=years, 3=decades (default: 2)")
 
     # How exposed is this endpoint to the outside world?
@@ -235,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument("--cef-output", metavar="file", help="Save the scan results to a CEF file for SIEM integration (e.g. report.cef)")
 
     # Where to save the NDJSON report - optional, only saves if this flag is provided
-    # NDJSON is one JSON object per line, which Splunk and most SIEMs ingest with zero configuration guesswork.
+    # NDJSON is one JSON object per line. Splunk can break on that newline and read each object as its own event.
     parser.add_argument("--ndjson-output", metavar="file", help="Save the scan results to an NDJSON file for SIEM ingestion (e.g. report.ndjson)")
 
     # Read what the user typed in the command line and store it
@@ -261,9 +264,9 @@ if __name__ == "__main__":
             console.print("[bold cyan]Analysing certificate...[/bold cyan]")
             findings = analyse_certificate(certificate)
 
-            # Step 3: Run the risk engine to score and get NIST recommendations.
+            # Step 3: A classical server key is scored. A post-quantum server key is not.
             console.print("[bold cyan]Evaluating risk...[/bold cyan]")
-            risk = evaluate_risk(findings["algorithm"], findings["key_size"], data_sensitivity=arguments.sensitivity, data_lifetime=arguments.lifetime, exposure_surface=arguments.exposure)
+            risk = certificate_risk(findings, data_sensitivity=arguments.sensitivity, data_lifetime=arguments.lifetime, exposure_surface=arguments.exposure)
 
             # Step 4: Display everything in a clean table.
             display_results(arguments.target, findings, risk)
@@ -276,6 +279,7 @@ if __name__ == "__main__":
                 "vulnerable": findings["vulnerable"],
                 "issuer": findings["issuer"],
                 "expires": findings["expires"],
+                "issuer_signature_algorithm": findings["issuer_signature_algorithm"],
                 "quantum_exposure_score": risk.score,
                 "threat_category": risk.threat_category,
                 "severity": risk.severity,
