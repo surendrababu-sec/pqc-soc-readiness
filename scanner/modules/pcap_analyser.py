@@ -621,11 +621,18 @@ def analyse_pcap(pcap_filepath):
             # server's chosen suite
             algorithm, is_vulnerable, suite_name = classify_cipher_suite(session["selected_suite"])
 
-            # TLS 1.3 cipher suites tells nothing about key exchange
-            # the suite name only describes symmetric encryption and hashing.
-            # Need to look at the supported groups to find out what key exchange algorithm was actually used.
+            # TLS 1.3 cipher suites do not name the key exchange.
+            # If the Server Hello named a group, use that group.
+            # Otherwise use the client's list, and a mixed offer stays classical.
             if algorithm == "TLS13" and session["supported_groups"]:
-                algorithm, is_vulnerable = classify_supported_groups(session["supported_groups"])
+                selected_group = session.get("selected_group")
+                group_entry = ALL_SUPPORTED_GROUPS.get(selected_group) if selected_group is not None else None
+
+                if group_entry is not None:
+                    algorithm = group_entry["group_type"]
+                    is_vulnerable = group_entry["quantum_vulnerable"]
+                else:
+                    algorithm, is_vulnerable = classify_supported_groups(session["supported_groups"])
                 suite_name = f"TLS 1.3 with {algorithm}"
 
         elif session["offered_suites"]:

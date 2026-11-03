@@ -41,12 +41,35 @@ class RiskFinding(BaseModel):
 SEVERITY_NOT_SCORED = "NOT-SCORED"
 
 # Shared post-quantum rationale text. Called from the PQ short-circuit in evaluate_risk and from the pq_safe branch in certificate_risk.
+# Hybrid is tested first: "ECC+ML-KEM" also contains "ML-KEM".
 def post_quantum_rationale(algorithm):
 
+    if "ECC+ML-KEM" in algorithm:
+        return (
+            f"{algorithm} is a hybrid key exchange. "
+            "The classical half is still vulnerable to Shor's algorithm. "
+            "The session remains confidential if the specified combiner is used and either half remains unbroken. "
+            "No exposure score is calculated, because there is no purely classical key exchange to score. "
+            "This finding does not say anything about the certificate."
+        )
+
+    if "ML-KEM" in algorithm:
+        return (
+            f"{algorithm} is post-quantum. "
+            "The session's key exchange is not vulnerable to Shor's algorithm. "
+            "No exposure score is calculated, because there is no classical key exchange to score. "
+            "This finding does not say anything about the certificate."
+        )
+
+    # ML-DSA or SLH-DSA leaf whose issuer signature is also post-quantum.
+    # certificate_risk calls this only after that second check has passed.
+
     return (
-        f"{algorithm} uses post-quantum cryptography and is not vulnerable to Shor's algorithm. "
-        "No quantum key exchange or authentication forgery exposure detected for this endpoint. "
-        "The quantum exposure scoring model does not apply to post-quantum findings, as there is no threat to score."
+        f"{algorithm} is post-quantum. "
+        "The leaf public key and the issuer signature are both post-quantum, "
+        "so Shor's algorithm does not recover either private key. "
+        "No exposure score is calculated, because there is no classical signature to score. "
+        "This finding does not say anything about the key exchange."
     )
 
 # Figures out how urgently the detected algorithm needs to be replaced.
@@ -176,8 +199,10 @@ def get_nist_recommendation(algorithm, usage="signature"):
 # certificate_risk takes those. A classical signature on that certificate is not safe.
 def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, exposure_surface=2, usage="signature", key_size_source="certificate"):
 
-    # PQ-safe short-circuit
-    # Any algorithm string containing ML-KEM, ML-DSA, or SLH-DSA is post-quantum safe. This catches pure PQ (ML-KEM, ML-DSA, SLH-DSA) and hybrid constructions such as ECC+ML-KEM, where the ML-KEM component protects the session even if the classical component is quantum-broken.
+    # PQ-safe short-circuit.
+    # Matches the names this program stores: "ML-KEM", "ML-DSA", "SLH-DSA", and the hybrid name "ECC+ML-KEM".
+    # It does not match the IANA spelling "X25519MLKEM768".
+    # The packet-capture code has to rename that group before it calls this function.
     if any(pq_algorithm in algorithm for pq_algorithm in ["ML-KEM", "ML-DSA", "SLH-DSA"]):
 
         # Route to the NIST recommendation - the existing function already distinguishes pure PQ from hybrid via the ECC_hybrid mapping
@@ -236,7 +261,7 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
         if key_size_source == "modal_baseline":
             rationale += (
                 " Key size not available from this capture - score assumes modal "
-                "deployment baseline (RSA-2048 / ECC P-256 per Cloudflare Radar 2024)."
+                "deployment baseline (RSA-2048 / ECC P-256)."
             )
         elif key_size_source == "live_fetch":
             rationale += (
@@ -245,7 +270,7 @@ def evaluate_risk(algorithm, key_size, data_sensitivity=2, data_lifetime=2, expo
             )
         elif key_size_source == "supported_group":
             rationale += (
-                " Key size derived from the classical ECC group offered in the Client Hello."
+                " Key size derived from the smallest ECC or hybrid group offered in the Client Hello."
             )
         elif key_size_source == "negotiated_group":
             rationale += (
