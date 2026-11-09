@@ -37,7 +37,7 @@ def save_ndjson_report(filename, all_findings, scan_id, data_sensitivity, data_l
             event_line = {
                 "scan_id": scan_id,
                 "scan_timestamp": scan_timestamp,
-                "scanner_version": "0.1",
+                "scanner_version": "0.2",
                 "data_sensitivity": data_sensitivity,
                 "data_lifetime": data_lifetime,
                 "exposure_surface": exposure_surface,

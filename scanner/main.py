@@ -157,7 +157,7 @@ def save_json_report(filename, all_findings, arguments, scan_id, total_in_file=N
     scan_metadata = {
         "scan_id": scan_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "scanner_version": "0.1",
+        "scanner_version": "0.2",
         "threat_model": "HNDL (Harvest Now, Decrypt Later) and quantum authentication forgery",
         "context_settings": {
             "data_sensitivity": arguments.sensitivity,

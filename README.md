@@ -337,7 +337,7 @@ TRUNCATE = 10000
 
 The 47-session capture ingested as 47 events. The 300-hostname certificate run ingested as 300 events under the same sourcetype. In a PCAP line the finding also contains a field called `source`, set to `pcap_handshake`. Splunk already uses `source` for the filename. Filter on `sourcetype` or `target`. The NDJSON name for the NIST string is `nist_standard`. The CEF name is `nistStandard`.
 
-The running code still reports `scanner_version` 0.1. NDJSON, the four-row certificate check, and the TLS 1.3 selected-group rule landed on `main` after the v0.1 tag. They do not have a tag of their own yet. See [Roadmap](#roadmap).
+A run of v0.2 writes `scanner_version` 0.2 in the JSON report, the NDJSON line, and the CEF header.
  
 ### Show all available options
  
@@ -484,7 +484,7 @@ Unknown            : 0
 One CEF line from that session, so the shape is visible:
 
 ```
-CEF:0|PQC-SOC|Readiness Scanner|0.1|ECC|Quantum-vulnerable key exchange detected|7|target=52.123.255.143:443 algorithm=ECC score=53.33 threatCategory=confidentiality_harvest nistStandard=FIPS 203 (ML-KEM) msg=ECC is vulnerable to Shor's algorithm under the HNDL threat model. Session keys derived from this key exchange are at risk of retroactive decryption - traffic captured today can be decrypted once a sufficiently powerful quantum computer exists. Quantum exposure score: 53.33/100 (HIGH). Key size read directly from the group the server selected in the KeyShare extension.
+CEF:0|PQC-SOC|Readiness Scanner|0.2|ECC|Quantum-vulnerable key exchange detected|7|target=52.123.255.143:443 algorithm=ECC score=53.33 threatCategory=confidentiality_harvest nistStandard=FIPS 203 (ML-KEM) msg=ECC is vulnerable to Shor's algorithm under the HNDL threat model. Session keys derived from this key exchange are at risk of retroactive decryption - traffic captured today can be decrypted once a sufficiently powerful quantum computer exists. Quantum exposure score: 53.33/100 (HIGH). Key size read directly from the group the server selected in the KeyShare extension.
 ```
 
 One NDJSON line carries the same finding, plus `scan_id`, `scan_timestamp`, the three context values, `migration_advice`, and `rationale`. Those last two fields are long. The fields a search usually starts from are `target`, `algorithm`, `quantum_exposure_score`, `threat_category`, `key_size`, and `key_size_source`.
@@ -550,26 +550,26 @@ Honesty matters more than ambition. Here is exactly where this project stands to
 | NIST FIPS 203/204/205 study | ✅ Complete |
 | Scanner architecture and design | ✅ Complete |
 | TLS certificate detection - RSA, ECC, DSA, DH, EdDSA | ✅ Complete |
-| Four-row check, leaf OID and issuer-signature OID | ✅ Complete, on `main` after v0.1 |
-| `issuer_classical`, NOT-SCORED, not safe | ✅ Complete, on `main` after v0.1 |
+| Four-row check, leaf OID and issuer-signature OID | ✅ Complete |
+| `issuer_classical`, NOT-SCORED, not safe | ✅ Complete |
 | Multiple target scanning from file | ✅ Complete |
 | Quantum exposure scoring engine | ✅ Complete - weighted 0-100 with configurable rubric. Null score for post-quantum and for `issuer_classical` |
 | NIST migration recommendation engine | ✅ Complete - FIPS 203/204/205 mapped |
 | Configurable risk context flags | ✅ Complete. Default 2, 2, 2 |
 | JSON export for SIEM integration | ✅ Complete. Failed scans included, urgency-first ordering. Not a Splunk event source |
 | CEF export | ✅ Complete. Checked on Splunk 10.4.3 with the CEF Extraction Add-on. No `scan_id`, and no scan time, on the line |
-| NDJSON export | ✅ Complete, on `main`. Checked on Splunk 10.4.3, `KV_MODE=json`, 47 events and 300 events |
+| NDJSON export | ✅ Complete. Checked on Splunk 10.4.3, `KV_MODE=json`, 47 events and 300 events |
 | `scan_id` shared by the JSON report and the NDJSON lines | ✅ Complete. Not written to CEF |
 | PCAP handshake analysis | ✅ Complete |
 | Detection of hybrid PQC groups (X25519+ML-KEM, pure ML-KEM) | ✅ Complete. Labelled `pq_safe`, not scored |
 | Hybrid PQC adoption reported as its own category | ✅ Complete |
 | Dual quantum threat taxonomy (confidentiality vs authentication) | ✅ Complete |
 | Algorithm-aware key size resolution from TLS groups | ✅ Complete. Five source labels |
-| TLS 1.3 selected group used for classification and for the key size | ✅ Complete, on `main` after v0.1 |
+| TLS 1.3 selected group used for classification and for the key size | ✅ Complete |
 | Post-quantum finding differentiation (`pq_safe`, INFO) | ✅ Complete |
 | Algorithm-specific migration advice, once per algorithm on the console | ✅ Complete |
 | v0.1 tagged release | ✅ Released 14 July 2026 |
-| v0.2 tag for the work since July | 🟡 Not tagged yet. |
+| v0.2 | ✅ Tagged November 2026 |
 | arXiv manuscript | 🟡 In preparation |
  
 ✅ = complete · 🟡 = in progress · ⏳ = planned
@@ -650,8 +650,8 @@ This project is structured as a phased independent research programme. Current p
 - `issuer_classical` for a post-quantum leaf with a classical issuer signature ✅
 - TLS 1.3 classification follows the server's selected group when the Client Hello list is present ✅
 - Rationale text that does not claim a finding saw a certificate, or a combiner, it did not check ✅
+- Tag v0.2 ✅
 - arXiv preprint 🟡
-- Tag v0.2 🟡
   
 ---
  
@@ -680,7 +680,7 @@ Until the manuscript is published, you may cite this repository:
                   Captures for Quantum-Vulnerable Cryptography Under the HNDL and Authentication Forgery Threat Models},
   year         = {2026},
   howpublished = {\url{https://github.com/surendrababu-sec/pqc-soc-readiness}},
-  note         = {Independent research project and open-source tool. v0.1 released July 2026. Manuscript in preparation.}
+  note         = {Independent research project and open-source tool. v0.2 tagged November 2026. Manuscript in preparation.}
 }
 ```
  

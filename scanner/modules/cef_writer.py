@@ -36,7 +36,7 @@ def build_cef_event(finding):
     cef_version = "0"
     device_vendor = "PQC-SOC"
     device_product = "Readiness Scanner"
-    device_version = "0.1"
+    device_version = "0.2"
     signature_id = finding.get("algorithm", "unknown")
     cef_severity = map_severity_to_cef(finding.get("severity", "LOW"))
 
