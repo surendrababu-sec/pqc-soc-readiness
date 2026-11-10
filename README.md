@@ -17,11 +17,11 @@ Every vulnerable finding traces back to a specific NIST standard, a documented t
  
 ## Demo
 
+https://github.com/user-attachments/assets/18e8d2fb-a9d0-410a-a32b-2e4e65a16228
 
-https://github.com/user-attachments/assets/ce9c3414-75a2-4a2e-bb24-dbecb8d2ecea
- 
+A certificate scan of google.com, then the 10 November list of 300 hostnames. 299 answered and one failed. Those 299 findings are separate Splunk events: 287 scored 66.67 and 12 scored 53.33.
 
-> *Live certificate scan demo. PCAP output is shown in the [Sample Output](#sample-output) section below.*
+[Same file in the repository](assets/pqc-soc-demo.mp4).
  
 ---
  
@@ -397,6 +397,8 @@ Failed to scan: 0
 | 66.67 | 287 | 211 RSA-2048, 76 secp256r1 |
 | 53.33 | 13 | 11 RSA-4096, 2 secp384r1 |
 
+This printed summary is the 5 November run, which is the one the manuscript uses. The demo at the top is a later pass, on 10 November: 299 answered, one failed, 287 at 66.67 and 12 at 53.33.
+
 Context values were left at 2. No finding was `issuer_classical` or `pq_safe`. The scan did not walk the chain above the issuer signature, and it did not look at the key exchange. The list is a public-hostname list, not a measure of whether those organisations have a migration plan. A CDN certificate is the certificate the scanner sees.
  
 ### PCAP analysis - network capture (47 sessions detected)
@@ -600,6 +602,7 @@ pqc-soc-readiness/
 │   └── main.py                       # CLI entry point
 ├── assets/
 │   └── help_screenshot.png           # CLI --help output
+│   └── pqc-soc-demo.mp4              # 10 November demo
 ├── MONTH-1-NOTES.md                  # Month 1 - HNDL threat model and foundations
 ├── MONTH-2-NOTES.md                  # Month 2 - CRYSTALS-Kyber mathematics
 ├── MONTH-3-NOTES.md                  # Month 3 - CRYSTALS-Dilithium mathematics
@@ -614,7 +617,7 @@ The `knowledge/` folder is kept as data, not code. Weights, mappings, and IANA r
  
 ## Roadmap
  
-This project is structured as a phased independent research programme. Current phase: **Phase 4 - arXiv preprint and next release**.
+This project is structured as a phased independent research programme. Current phase: **Phase 4 - arXiv preprint**.
  
 **Phase 1 - Foundation** ✅ *Complete*
 
@@ -643,7 +646,7 @@ This project is structured as a phased independent research programme. Current p
 - Post-quantum short-circuit (`pq_safe`, INFO) ✅
 - Documentation pass for the v0.1 page ✅
   
-**Phase 4 - Manuscript and the next release** 🟡 *In progress*
+**Phase 4 - arXiv preprint** 🟡 *In progress*
 
 - NDJSON, and the Splunk 10.4.3 check ✅
 - Four-row certificate check, leaf and issuer signature read separately ✅
